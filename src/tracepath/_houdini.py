@@ -3,6 +3,7 @@ import os
 import re
 from importlib import reload
 from pathlib import Path
+
 from tracepath import _usd
 
 reload(_usd)
@@ -61,11 +62,10 @@ def get_manifest_context(node: hou.Node, templ) -> str:
 
 def set_latest_version(node: hou.Node, context: str):
     """
-    Set the node's version parameter to the latest version found in the context folder (Run on node creation).
+    Set the node's version parameter to the latest version found in the context folder (Run from HDA on node creation).
     """
     version = get_latest_version_number(str(context))
     node.parm("version").set(version)
-
 
 
 def load_shot_manifest(node: hou.Node) -> str:
@@ -74,9 +74,7 @@ def load_shot_manifest(node: hou.Node) -> str:
     Used in HDA parameter
     """
     context = get_manifest_context(node, "usd_shot_manifest_output")
-
     node_version = node.parm("version").evalAsString()
-
     file = find_matching_files(str(context), node_version)
 
     if not file or not Path(file).exists():
@@ -92,7 +90,6 @@ def find_matching_files(base_path: str, version: int) -> str:
     base = Path(base_path)
     results = []
     for subfolder in base.iterdir():
-
         if subfolder.is_dir() and node_version in subfolder.name:
             for file in subfolder.iterdir():
 
@@ -111,7 +108,6 @@ def get_latest_version_number(context: str) -> int | None:
     if context_path.exists():
         versioned_dirs = []
         for d in context_path.iterdir():
-
             match = re.search(r'\d+', d.name)
             if match:
                 versioned_dirs.append(int(match.group()))
@@ -135,15 +131,12 @@ def get_usd_output_path(node: hou.Node, template) -> str:
     node_vars["padding"] = ".$F4" if node.evalParm("trange") else ""
     all_node_data = {**env_vars, **node_vars}
 
-    # Resolving template
     templ = get_path_structure_templ(template)
-    # Getting the first part of the output path string
     output_path = templ.format(**all_node_data)
-
     return output_path
 
 
-def get_first_frame_cache(node: hou.Node)->float:
+def get_first_frame_cache(node: hou.Node) -> float:
     """
     Gets first frame cache for a given node.
     """
@@ -167,7 +160,7 @@ def apply_autoversion(node: hou.Node):
 
 def version_up_main_shot_manifest(node: hou.Node) -> str | None:
     """
-    Versions up the main shot manifest path.
+    Versions up main shot manifest path. Creates an output path, using re extracts the version number.
     """
     context = get_manifest_context(node, "usd_shot_manifest_output")
     latest_version = get_latest_version_number(str(context))
@@ -182,14 +175,13 @@ def version_up_main_shot_manifest(node: hou.Node) -> str | None:
         return None
 
     version = match.group(1)
-    version_up= int(version) + (1 if hou.frame() == node.parm("f1").eval() else 0)
+    version_up = int(version) + (1 if hou.frame() == node.parm("f1").eval() else 0)
 
     new_version = str(version_up).zfill(len(version))
-
     new_folder_name = parent_folder.name.replace(version, new_version)
     new_folder = parent_folder.parent / new_folder_name
-
     new_file_name = file_name.replace(version, new_version)
 
     new_output_path = new_folder / new_file_name
     return str(new_output_path)
+
