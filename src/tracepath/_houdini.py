@@ -175,11 +175,12 @@ def version_up_main_shot_manifest(node: hou.Node) -> str | None:
     file_name = path.name
 
     match = re.search(r"(\d+)$", parent_folder.name)
+
     if not match:
         return None
 
     version = match.group(1)
-    version_up = int(version) + (1 if hou.frame() == node.parm("f1").eval() else 0)
+    version_up = int(version) + (1 if hou.frame() == node.parm("f1").eval() or node.parm("trange").eval() == 0 else 0)
 
     new_version = str(version_up).zfill(len(version))
     new_folder_name = parent_folder.name.replace(version, new_version)
@@ -220,7 +221,8 @@ def write_publish_comment(node: hou.Node) -> None:
     key = get_publish_key(node)
 
     published_data = get_published_data(data_folder)
-    published_data.setdefault(key, []).append([file, comment])
+    published_data.setdefault(key, {})
+    published_data[key][file] = comment
 
     write_published_data(data_folder, published_data)
 
@@ -264,7 +266,11 @@ def read_publish_comment(node: hou.Node) -> str:
     key = get_publish_key(node)
     published_data = get_published_data(data_folder)
 
-    for f, comment in published_data.get(key, []):
+    file_to_comment = published_data.get(key, {})
+    print(f"File to comment: {file_to_comment}")
+    for f, comment in file_to_comment.items():
+        print(f, comment)
         if f == file_path:
             return comment
+
     return "Version doesn't exist."
