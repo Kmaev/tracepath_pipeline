@@ -11,7 +11,7 @@ reload(_usd)
 import hou
 
 
-# Load HDA
+# Generic functions for Load and Write USD HDAs in houdini
 def get_env() -> dict:
     """
     Gets environment variables for path resolution.
@@ -49,6 +49,7 @@ def get_path_structure_templ(template: str) -> str | None:
 def get_manifest_context(node: hou.Node, templ) -> str:
     """
     Resolve the full context path for the USD shot manifest using template and environment values.
+    This function is also used in houdini HDA
     """
     env_vars = get_env()
     node_vars = get_node_env_data(node)
@@ -60,31 +61,10 @@ def get_manifest_context(node: hou.Node, templ) -> str:
     return context
 
 
-def set_latest_version(node: hou.Node, context: str):
-    """
-    Set the node's version parameter to the latest version found in the context folder (Run from HDA on node creation).
-    """
-    version = get_latest_version_number(str(context))
-    node.parm("version").set(version)
-
-
-def load_shot_manifest(node: hou.Node) -> str:
-    """
-    Load the path to the main shot manifest file based on the version selected in the HDA.
-    Used in HDA parameter
-    """
-    context = get_manifest_context(node, "usd_shot_manifest_output")
-    node_version = node.parm("version").evalAsString()
-    file = find_matching_files(str(context), node_version)
-
-    if not file or not Path(file).exists():
-        raise RuntimeError(f"No matching file found for version '{node_version}' in: {context}")
-    return str(file)
-
-
 def find_matching_files(base_path: str, version: int) -> str:
     """
     Find a version folder and a file inside a version folder that contains the version string in its name.
+    Shot manifest context is sources from the template, but the actual file is sources by listing folders.
     """
     node_version = str(version).zfill(3)
     base = Path(base_path)
@@ -116,7 +96,31 @@ def get_latest_version_number(context: str) -> int | None:
     return None
 
 
-# Write HDA:
+# Load USD Stage HDA
+
+def set_latest_version(node: hou.Node, context: str):
+    """
+    Set the node's version parameter to the latest version found in the context folder (Run from HDA on node creation).
+    """
+    version = get_latest_version_number(str(context))
+    node.parm("version").set(version)
+
+
+def load_shot_manifest(node: hou.Node) -> str:
+    """
+    Load the path to the main shot manifest file based on the version selected in the HDA.
+    Used in HDA parameter
+    """
+    context = get_manifest_context(node, "usd_shot_manifest_output")
+    node_version = node.parm("version").evalAsString()
+    file = find_matching_files(str(context), node_version)
+
+    if not file or not Path(file).exists():
+        raise RuntimeError(f"No matching file found for version '{node_version}' in: {context}")
+    return str(file)
+
+
+# Write USD HDA:
 
 def get_usd_output_path(node: hou.Node, template) -> str:
     """
@@ -185,3 +189,82 @@ def version_up_main_shot_manifest(node: hou.Node) -> str | None:
     new_output_path = new_folder / new_file_name
     return str(new_output_path)
 
+
+# Publishing
+
+def get_data_folder() -> Path:
+    """
+    Helper function to get the data folder.
+    """
+    env_vars = get_env()
+    return Path(env_vars["pr_root"]) / env_vars["pr_show"] / "show_data"
+
+
+def get_publish_key(node: hou.Node) -> str:
+    """
+    Helper function to get the publish key, publish key consist of group and item what in classic vfx pipeline would be
+    sequence and shot.
+    """
+    node_data = get_node_env_data(node)
+    return f"{node_data['pr_group']}_{node_data['pr_item']}"
+
+
+def write_publish_comment(node: hou.Node) -> None:
+    """
+    Writes a publish comment to the published data file.
+    """
+    comment = node.parm("comment").eval()
+    file = node.parm("lopoutput2").evalAsString()
+
+    data_folder = get_data_folder()
+    key = get_publish_key(node)
+
+    published_data = get_published_data(data_folder)
+    published_data.setdefault(key, []).append([file, comment])
+
+    write_published_data(data_folder, published_data)
+
+
+def get_published_data_path(data_folder: Path) -> Path:
+    """
+    Helper function to get the path to the json file with all the published data. (Published data is show-based)
+    """
+    return data_folder / "published_data.json"
+
+
+def get_published_data(data_folder: Path) -> dict:
+    """
+    Loads the published assets data from a JSON file.
+
+    If the JSON file does not exist, it creates an empty one and returns an empty dictionary.
+    """
+    data_folder.mkdir(parents=True, exist_ok=True)
+    published_data_path = get_published_data_path(data_folder)
+
+    if not published_data_path.exists():
+        published_data_path.write_text('{}')
+
+    return json.loads(published_data_path.read_text())
+
+
+def write_published_data(data_folder: Path, published_data: dict) -> None:
+    """
+    Writes the published assets data to a JSON file.
+    """
+    published_data_path = get_published_data_path(data_folder)
+    published_data_path.write_text(json.dumps(published_data, indent=4))
+
+
+def read_publish_comment(node: hou.Node) -> str:
+    """
+    Reads the published comment from the published data file. Called from HDA parameter
+    """
+    file_path = node.parm("shot_manifest_read").evalAsString()
+    data_folder = get_data_folder()
+    key = get_publish_key(node)
+    published_data = get_published_data(data_folder)
+
+    for f, comment in published_data.get(key, []):
+        if f == file_path:
+            return comment
+    return "Version doesn't exist."
