@@ -155,48 +155,47 @@ def apply_autoversion(node: hou.Node):
     """
     This function called from HDA to version up the file
     """
+    version = 1
     if node.parm("autoversion").eval() == 1:
         context = Path(node.parm("lopoutput").evalAsString()).parent.parent
         if context:
             latest_version = get_latest_version_number(str(context))
-            if not latest_version:
-                latest_version = 1
-        else:
-            latest_version = 1
-        later_version = str(latest_version + 1).zfill(3)
-        node.parm("version").set(later_version)
+            if latest_version:
+                version = str(latest_version + 1).zfill(3)
+
+    node.parm("version").set(version)
 
 
-def version_up_main_shot_manifest(node: hou.Node) -> str | None:
+def version_up_shot_manifest(node: hou.Node) -> str | None:
     """
     Versions up main shot manifest path. Creates an output path, using re extracts the version number.
+    This function called from Write USD HDA
     """
     new_output_path = ""
-    context = get_manifest_context(node, "usd_shot_manifest_output")
-    latest_version = get_latest_version_number(str(context))
+    context = Path(get_manifest_context(node, "usd_shot_manifest_output"))
+    if context.exists():
+        latest_version = get_latest_version_number(str(context))
+        if latest_version:
+            output_path = find_matching_files(str(context), latest_version)
+            if output_path:
+                path = Path(output_path)
+                parent_folder = path.parent
+                file_name = path.name
 
-    output_path = find_matching_files(str(context), latest_version)
-    if output_path:
-        path = Path(output_path)
-        parent_folder = path.parent
-        file_name = path.name
+                match = re.search(r"(\d+)$", parent_folder.name)
 
-        match = re.search(r"(\d+)$", parent_folder.name)
+                if match:
+                    version = match.group(1)
+                    version_up = int(version) + (
+                        1 if hou.frame() == node.parm("f1").eval() or node.parm("trange").eval() == 0 else 0)
 
-        if not match:
-            return None
+                    new_version = str(version_up).zfill(len(version))
+                    new_folder_name = parent_folder.name.replace(version, new_version)
+                    new_folder = parent_folder.parent / new_folder_name
+                    new_file_name = file_name.replace(version, new_version)
+                    new_output_path = new_folder / new_file_name
 
-        version = match.group(1)
-        version_up = int(version) + (
-            1 if hou.frame() == node.parm("f1").eval() or node.parm("trange").eval() == 0 else 0)
-
-        new_version = str(version_up).zfill(len(version))
-        new_folder_name = parent_folder.name.replace(version, new_version)
-        new_folder = parent_folder.parent / new_folder_name
-        new_file_name = file_name.replace(version, new_version)
-        new_output_path = new_folder / new_file_name
-
-    if not output_path and not latest_version:
+    if not new_output_path:
         node_vars = {}
         node_vars["version"] = "001"
         node_vars["file_format"] = node.parm("format").evalAsString()
@@ -234,7 +233,7 @@ def write_publish_comment(node: hou.Node) -> None:
     Writes a publish comment to the published data file.
     """
     comment = node.parm("comment").eval()
-    file = node.parm("lopoutput2").evalAsString()
+    file = node.parm("shot_manifest_output").eval()
 
     data_folder = get_data_folder()
     key = get_publish_key(node)
@@ -244,6 +243,8 @@ def write_publish_comment(node: hou.Node) -> None:
     published_data[key][file] = comment
 
     write_published_data(data_folder, published_data)
+    node.parm("comment").set("")
+    hou.ui.displayMessage(f"Shot manifest: \n{file} \npublished successfully!", severity=hou.severityType.Message)
 
 
 def get_published_data_path(data_folder: Path) -> Path:
