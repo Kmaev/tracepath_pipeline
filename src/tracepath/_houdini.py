@@ -61,7 +61,7 @@ def get_manifest_context(node: hou.Node, templ) -> str:
     return context
 
 
-def find_matching_files(base_path: str, version: int) -> str:
+def find_matching_files(base_path: str, version: int) -> str | None:
     """
     Find a version folder and a file inside a version folder that contains the version string in its name.
     Shot manifest context is sources from the template, but the actual file is sources by listing folders.
@@ -75,9 +75,7 @@ def find_matching_files(base_path: str, version: int) -> str:
 
                 if node_version in file.name:
                     results.append(file)
-    if not results[0]:
-        raise IndexError(f"No matching file found for version '{node_version}' in: {base_path}")
-    return results[0]
+    return results[0] if results else None
 
 
 def get_latest_version_number(context: str) -> int | None:
@@ -85,15 +83,19 @@ def get_latest_version_number(context: str) -> int | None:
     Gets the highest version number from versioned subfolders in a given context.
     """
     context_path = Path(context)
-    if context_path.exists():
-        versioned_dirs = []
-        for d in context_path.iterdir():
-            match = re.search(r'\d+', d.name)
-            if match:
-                versioned_dirs.append(int(match.group()))
+    if not context_path.exists():
+        return None
+
+    versioned_dirs = []
+    for d in context_path.iterdir():
+        match = re.search(r'\d+', d.name)
+        if match:
+            versioned_dirs.append(int(match.group()))
+    if versioned_dirs:
         version = sorted(versioned_dirs, reverse=True)[0]
         return version
-    return None
+    else:
+        return None
 
 
 # Load USD Stage HDA
@@ -155,8 +157,11 @@ def apply_autoversion(node: hou.Node):
     """
     if node.parm("autoversion").eval() == 1:
         context = Path(node.parm("lopoutput").evalAsString()).parent.parent
-        latest_version = get_latest_version_number(str(context))
-        if not latest_version:
+        if context:
+            latest_version = get_latest_version_number(str(context))
+            if not latest_version:
+                latest_version = 1
+        else:
             latest_version = 1
         later_version = str(latest_version + 1).zfill(3)
         node.parm("version").set(later_version)
@@ -166,28 +171,42 @@ def version_up_main_shot_manifest(node: hou.Node) -> str | None:
     """
     Versions up main shot manifest path. Creates an output path, using re extracts the version number.
     """
+    new_output_path = ""
     context = get_manifest_context(node, "usd_shot_manifest_output")
     latest_version = get_latest_version_number(str(context))
 
     output_path = find_matching_files(str(context), latest_version)
-    path = Path(output_path)
-    parent_folder = path.parent
-    file_name = path.name
+    if output_path:
+        path = Path(output_path)
+        parent_folder = path.parent
+        file_name = path.name
 
-    match = re.search(r"(\d+)$", parent_folder.name)
+        match = re.search(r"(\d+)$", parent_folder.name)
 
-    if not match:
-        return None
+        if not match:
+            return None
 
-    version = match.group(1)
-    version_up = int(version) + (1 if hou.frame() == node.parm("f1").eval() or node.parm("trange").eval() == 0 else 0)
+        version = match.group(1)
+        version_up = int(version) + (
+            1 if hou.frame() == node.parm("f1").eval() or node.parm("trange").eval() == 0 else 0)
 
-    new_version = str(version_up).zfill(len(version))
-    new_folder_name = parent_folder.name.replace(version, new_version)
-    new_folder = parent_folder.parent / new_folder_name
-    new_file_name = file_name.replace(version, new_version)
+        new_version = str(version_up).zfill(len(version))
+        new_folder_name = parent_folder.name.replace(version, new_version)
+        new_folder = parent_folder.parent / new_folder_name
+        new_file_name = file_name.replace(version, new_version)
+        new_output_path = new_folder / new_file_name
 
-    new_output_path = new_folder / new_file_name
+    if not output_path and not latest_version:
+        node_vars = {}
+        node_vars["version"] = "001"
+        node_vars["file_format"] = node.parm("format").evalAsString()
+
+        _, templ_file = get_path_structure_templ("usd_shot_manifest_output")
+        print(f"Template file: {templ_file}")
+        print(f"Node vars: {node_vars}")
+        new_file_path = Path(templ_file.format(**node_vars))
+        new_output_path = context / new_file_path
+
     return str(new_output_path)
 
 
@@ -257,7 +276,7 @@ def write_published_data(data_folder: Path, published_data: dict) -> None:
     published_data_path.write_text(json.dumps(published_data, indent=4))
 
 
-def read_publish_comment(node: hou.Node) -> str:
+def read_publish_comment(node: hou.Node) -> str | None:
     """
     Reads the published comment from the published data file. Called from HDA parameter
     """
@@ -273,4 +292,4 @@ def read_publish_comment(node: hou.Node) -> str:
         if f == file_path:
             return comment
 
-    return "Version doesn't exist."
+    return None
