@@ -1,12 +1,7 @@
 import json
 import os
 import re
-from importlib import reload
 from pathlib import Path
-
-from tracepath import _usd
-
-reload(_usd)
 
 import hou
 
@@ -35,15 +30,22 @@ def get_node_env_data(node: hou.Node) -> dict:
     return node_data
 
 
-def get_path_structure_templ(template: str) -> str | None:
+def get_path_structure_templ(template: str) -> str | list | None:
     """
     Load a path template from the folder_structure.json file.
     """
     json_path = Path(__file__).parent / "folder_structure.json"
-    with open(json_path) as f:
-        folder_structure = json.load(f)
-    templ = folder_structure[template]
-    return templ
+
+    try:
+        with open(json_path) as f:
+            folder_structure = json.load(f)
+        return folder_structure[template]
+    except KeyError:
+        hou.ui.displayMessage(
+            f"Template key '{template}' not found in {json_path.name}",
+            severity=hou.severityType.Error
+        )
+        return None
 
 
 def get_manifest_context(node: hou.Node, templ) -> str:
@@ -138,6 +140,8 @@ def get_usd_output_path(node: hou.Node, template) -> str:
     all_node_data = {**env_vars, **node_vars}
 
     templ = get_path_structure_templ(template)
+    if not templ:
+        raise RuntimeError(f"Template '{template}' not found.")
     output_path = templ.format(**all_node_data)
     return output_path
 
@@ -158,11 +162,10 @@ def apply_autoversion(node: hou.Node):
     version = 1
     if node.parm("autoversion").eval() == 1:
         context = Path(node.parm("lopoutput").evalAsString()).parent.parent
-        if context:
+        if context.exists():
             latest_version = get_latest_version_number(str(context))
             if latest_version:
-                version = str(latest_version + 1).zfill(3)
-
+                version = latest_version
     node.parm("version").set(version)
 
 
@@ -201,8 +204,6 @@ def version_up_shot_manifest(node: hou.Node) -> str | None:
         node_vars["file_format"] = node.parm("format").evalAsString()
 
         _, templ_file = get_path_structure_templ("usd_shot_manifest_output")
-        print(f"Template file: {templ_file}")
-        print(f"Node vars: {node_vars}")
         new_file_path = Path(templ_file.format(**node_vars))
         new_output_path = context / new_file_path
 
@@ -287,9 +288,7 @@ def read_publish_comment(node: hou.Node) -> str | None:
     published_data = get_published_data(data_folder)
 
     file_to_comment = published_data.get(key, {})
-    print(f"File to comment: {file_to_comment}")
     for f, comment in file_to_comment.items():
-        print(f, comment)
         if f == file_path:
             return comment
 
