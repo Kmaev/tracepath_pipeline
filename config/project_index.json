@@ -1,0 +1,27 @@
+{
+    "MyProjectExample": {
+        "sequences": {
+            "MySequenceExample": {
+                "shots": {
+                    "MyShotExample": {}
+                }
+            }
+        }
+    },
+    "TestProject": {
+        "sequences": {
+            "seq_01": {
+                "shots": {
+                    "sh_1010": {},
+                    "sh_1020": {}
+                }
+            },
+            "seq_02": {
+                "shots": {
+                    "sh_2010": {},
+                    "sh_2020": {}
+                }
+            }
+        }
+    }
+}
