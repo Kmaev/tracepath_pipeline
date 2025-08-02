@@ -63,10 +63,11 @@ class TraceProjectIndex(QtWidgets.QMainWindow):
         self.dcc_label = QtWidgets.QLabel("Software Folder Templates (space-separated)")
         self.central_layout.addWidget(self.dcc_label)
 
-        self.added_tasks_check = QtWidgets.QCheckBox("Create software-based subfolders under each Task")
-        self.central_layout.addWidget(self.added_tasks_check)
+        self.added_task_subfolders_check = QtWidgets.QCheckBox("Create software-based subfolders under each Task")
+        self.central_layout.addWidget(self.added_task_subfolders_check)
 
         self.include_software = QtWidgets.QLineEdit()
+        self.include_software.setEnabled(False)
         self.include_software.setPlaceholderText(
             'Type space-separated list of software to include e.g. houdini blender unreal')
         self.central_layout.addWidget(self.include_software)
@@ -105,6 +106,8 @@ class TraceProjectIndex(QtWidgets.QMainWindow):
 
         self.tree_widget.itemSelectionChanged.connect(self.cache_selected_item_name)
 
+        self.added_task_subfolders_check.stateChanged.connect(self.on_add_task_checked)
+
         self.create_folder_structure_btn.clicked.connect(self.create_folder_structure)
 
         # Shortcuts signal connections
@@ -114,11 +117,17 @@ class TraceProjectIndex(QtWidgets.QMainWindow):
         self.add_shortcut = QtGui.QShortcut(QtGui.QKeySequence("N"), self)
         self.add_shortcut.activated.connect(self.add_tree_item)
 
+    def on_add_task_checked(self):
+        """
+        Enables or disables the software input field based on the 'Add Tasks Subfolder' checkbox.
+        Disables editing if the checkbox is unchecked.
+        """
+        self.include_software.setEnabled(self.added_task_subfolders_check.isChecked())
+
     def _tree_item(self, name, parent, removable=False):
         """
         Defines a QTreeWidgetItem and adds it to the parent.
         """
-
         _parent = parent
         count = 1
 
@@ -339,13 +348,15 @@ class TraceProjectIndex(QtWidgets.QMainWindow):
         show_folder_path = os.path.join(self.show_root, root.text(0))
         if not os.path.isdir(self.show_root):
             os.makedirs(self.show_root)
-
-        self.check_dcc_name()
+        if self.added_task_subfolders_check.isChecked():
+            self.check_dcc_name()
         self._create_folders_recursive(root, show_folder_path)
 
         self.update_project_index()
 
         self._reset_ui_state()
+        self.tree_widget.clear()
+        self.populate_tree()
 
     def _create_folders_recursive(self, item, current_path):
         """
@@ -359,7 +370,7 @@ class TraceProjectIndex(QtWidgets.QMainWindow):
             item_type = metadata.get("type")
 
             folder_path = os.path.join(current_path, folder_name)
-            if item_type == "task":
+            if item_type == "task" and self.added_task_subfolders_check.isChecked():
                 dcc_list = self.include_software.text().split(" ")
                 for dcc_name in dcc_list:
                     utils.create_dcc_folder_structure(dcc_name, str(folder_path))
@@ -376,7 +387,7 @@ class TraceProjectIndex(QtWidgets.QMainWindow):
         """
         self.include_software.setText("")
         self.create_project_line_edit.setText("")
-        self.added_tasks_check.setChecked(False)
+        self.added_task_subfolders_check.setChecked(False)
         self.undo_stack = []
         self._rename_cache = None
 
