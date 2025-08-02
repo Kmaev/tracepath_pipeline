@@ -1,18 +1,19 @@
 
 from PySide6 import QtWidgets, QtCore, QtGui
-
 import sys
 import os
 import json
+#from kproject_index import res
 
 
 class ProjectIndex(QtWidgets.QMainWindow):
     def __init__(self, parent=None):
         super(ProjectIndex, self).__init__(parent=parent)
-        self.resize(400, 300)
+        self.resize(800, 400)
         #style_folder = os.environ.get("STYLE_KPROJECT_INDEX")
+
         #self.setWindowIcon(QtGui.QIcon(os.path.join(style_folder, "images/logo/app_logo.png")))
-        #self.project_index_path = os.getenv("PROJECTS_INDEX_PATH")
+        self.project_index_path = os.getenv("PROJECTS_INDEX_PATH")
 
         self.central_widget = QtWidgets.QWidget()
         self.central_layout = QtWidgets.QVBoxLayout(self.central_widget)
@@ -38,14 +39,14 @@ class ProjectIndex(QtWidgets.QMainWindow):
         self.save_button = QtWidgets.QPushButton("Save")
         self.buttons_layout.addWidget(self.save_button)
         self.save_button.clicked.connect(self.getProjectIndex)
-        #self.populateTree()
+        self.populateTree()
         # self.getProjectIndex()
         # self.deleteLater()
 
 
         #style_file = os.path.join(style_folder, "style.qss")
         #with open(style_file, 'r') as f:
-            #style = f.read()
+         #   style = f.read()
 
         #self.setStyleSheet(style)
 
@@ -99,7 +100,7 @@ class ProjectIndex(QtWidgets.QMainWindow):
         parent = self.getSelection()
         item = self._tree_item("Untitled", parent)
         if not item:
-            message = 'This template support only Project->Sequence->Shot hierarchy'
+            message = 'This template supports only Project->Sequence->Shot hierarchy'
             QtWidgets.QMessageBox.critical(self, 'Error', message)
             raise RuntimeError(message)
 
@@ -112,7 +113,7 @@ class ProjectIndex(QtWidgets.QMainWindow):
         if selected:
             self.tree_widget.invisibleRootItem().removeChild(selected[0])
         else:
-            print("No item was selected")
+            print("No name was selected")
 
     def getProjectIndex(self):
 
@@ -127,6 +128,7 @@ class ProjectIndex(QtWidgets.QMainWindow):
 
         with open(self.project_index_path, 'w') as output_file:
             json.dump(index, output_file, indent=4)
+        self.close()
 
     def _walk(self, parent, index, level):
         labels = ['sequences', 'shots']
