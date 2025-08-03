@@ -24,7 +24,7 @@ class TraceProjectIndex(QtWidgets.QMainWindow):
         # Get env vars
         style_folder = os.environ.get("STYLE_KPROJECT_INDEX")
         self.project_index_path = os.getenv("PROJECTS_INDEX_PATH")
-        self.show_root = os.getenv("PR_SHOW_ROOT")
+        self.show_root = os.getenv("PR_PROJECTS_PATH")
 
         self.central_widget = QtWidgets.QWidget()
         self.central_layout = QtWidgets.QVBoxLayout(self.central_widget)
