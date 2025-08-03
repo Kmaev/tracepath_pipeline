@@ -36,15 +36,46 @@
         "groups": {
             "seq1": {
                 "items": {
-                    "sh0060": {
+                    "sh0020": {
                         "tasks": {
-                            "fx": {},
-                            "env": {},
-                            "anim": {},
-                            "comp": {}
+                            "fx_destr": {}
                         }
                     }
                 }
+            }
+        }
+    },
+    "test2": {
+        "groups": {
+            "seq2": {
+                "items": {
+                    "sh0020": {
+                        "tasks": {
+                            "fx": {}
+                        }
+                    }
+                }
+            }
+        }
+    },
+    "test3": {
+        "groups": {
+            "seq1": {
+                "items": {}
+            }
+        }
+    },
+    "test5": {
+        "groups": {
+            "seq1": {
+                "items": {}
+            }
+        }
+    },
+    "test6": {
+        "groups": {
+            "seq3": {
+                "items": {}
             }
         }
     }
