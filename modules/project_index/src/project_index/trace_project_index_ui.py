@@ -126,6 +126,9 @@ class TraceProjectIndex(QtWidgets.QMainWindow):
         self.add_shortcut = QtGui.QShortcut(QtGui.QKeySequence("N"), self)
         self.add_shortcut.activated.connect(self.add_tree_item)
 
+        shortcut = QtGui.QShortcut(QtGui.QKeySequence("Esc"), self.tree_widget)
+        shortcut.activated.connect(lambda: self.tree_widget.clearSelection())
+
     def on_add_task_checked(self):
         """
         Enables or disables the software input field based on the 'Add Tasks Subfolder' checkbox.
@@ -238,7 +241,7 @@ class TraceProjectIndex(QtWidgets.QMainWindow):
         if selected:
             item = selected[0]
             metadata = item.data(0, QtCore.Qt.UserRole)
-            removable = metadata.get("removable")
+            removable = metadata.get("removable", False)
             if not removable:
                 QtWidgets.QMessageBox.information(
                     self,
@@ -276,17 +279,29 @@ class TraceProjectIndex(QtWidgets.QMainWindow):
         Updates the project index JSON file based on the current tree widget structure.
         Executed when 'Create Folder Structure' is pressed.
         """
-        index = {}
-        root = self.tree_widget.invisibleRootItem()
-        self._walk(root, index, -1)
-        index = index['children']
+        input_name = self.create_project_line_edit.text()
 
         dirname = os.path.dirname(self.project_index_path)
         if not os.path.isdir(dirname):
             os.makedirs(dirname)
 
+        with open(self.project_index_path, 'r') as f:
+            project_index = json.load(f)
+
+        index = {}
+
+        for i in range(self.tree_widget.topLevelItemCount()):
+            top_item = self.tree_widget.topLevelItem(i)
+            if top_item.text(0) == input_name:
+                root = top_item
+                project_key = top_item.text(0)
+                index[project_key] = {}
+                self._walk(root, index[project_key], 0)
+                break
+        project_index.update(index)
+
         with open(self.project_index_path, 'w') as output_file:
-            json.dump(index, output_file, indent=4)
+            json.dump(project_index, output_file, indent=4)
 
     def _walk(self, parent, index, level):
         """
@@ -324,8 +339,8 @@ class TraceProjectIndex(QtWidgets.QMainWindow):
         if not input_name:
             QtWidgets.QMessageBox.critical(self, "Error", "Please enter a project name to create or update.")
             return
-
         root_item = self.tree_widget.invisibleRootItem()
+
         root = None
 
         for i in range(root_item.childCount()):
@@ -359,13 +374,28 @@ class TraceProjectIndex(QtWidgets.QMainWindow):
             os.makedirs(self.show_root)
         if self.added_task_subfolders_check.isChecked():
             self.check_dcc_name()
+        self.set_item_removable(root, False)  # lock the project itself
+
         self._create_folders_recursive(root, show_folder_path)
 
         self.update_project_index()
 
         self._reset_ui_state()
-        self.tree_widget.clear()
-        self.populate_tree()
+
+    def set_item_removable(self, item, removable: bool):
+        """
+        Sets the 'removable' metadata flag for a QTreeWidgetItem..
+        This is used during folder structure creation to lock or unlock items from deletion
+        and editing. The removable state is stored in the item's UserRole metadata
+        """
+        meta = item.data(0, QtCore.Qt.UserRole) or {}
+        meta["removable"] = removable
+        item.setData(0, QtCore.Qt.UserRole, meta)
+
+        if removable:
+            item.setFlags(item.flags() | QtCore.Qt.ItemIsEditable)
+        else:
+            item.setFlags(item.flags() & ~QtCore.Qt.ItemIsEditable)
 
     def _create_folders_recursive(self, item, current_path):
         """
@@ -373,7 +403,10 @@ class TraceProjectIndex(QtWidgets.QMainWindow):
         Also creates software-specific subfolders for task nodes.
         """
         for i in range(item.childCount()):
+
             child = item.child(i)
+            self.set_item_removable(child, False)
+
             folder_name = child.text(0)
             metadata = item.data(0, QtCore.Qt.UserRole)
             item_type = metadata.get("type")
@@ -544,6 +577,7 @@ class TraceProjectIndex(QtWidgets.QMainWindow):
             "How to Use",
             "• Press 'N' to create a new project or add a new name. or right-click and choose 'Add'.\n\n"
             "• You can delete items using the 'Delete' key or by right-clicking and choosing 'Delete'.\n\n"
+            "• Press 'Esc' to diselect items.\n\n"
             "• After finishing your edits, type the project name to confirm the project you want to create or update.\n\n"
             "• Click the 'Create Folder Structure' button to write changes to disk and update the project index.\n\n"
             "• ⚠️ Please note: Once you click 'Create Folder Structure', the operation is final and cannot be undone.  "
