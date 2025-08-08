@@ -6,6 +6,7 @@ from importlib import reload
 
 from PySide6 import QtWidgets, QtCore, QtGui  # This should run on PySide2 add PySide2 package to REZ env
 
+import trie_search
 import utils
 
 reload(utils)
@@ -15,11 +16,11 @@ class TraceProjectIndex(QtWidgets.QMainWindow):
     def __init__(self, parent=None):
         super(TraceProjectIndex, self).__init__(parent=parent)
         # Set tool utils attr
-
         self.resize(900, 700)
         self.undo_stack = []
         self._rename_cache = None
         self.setWindowTitle('Trace Project Index v0.1.6')
+        self.searching = False
 
         # Get env vars
         style_folder = os.environ.get("STYLE_KPROJECT_INDEX")
@@ -52,10 +53,15 @@ class TraceProjectIndex(QtWidgets.QMainWindow):
         self.edit_label = QtWidgets.QLabel("Project Hierarchy Editor")
         self.central_layout.addWidget(self.edit_label)
 
+        self.search_line = QtWidgets.QLineEdit()
+        self.search_line.setPlaceholderText("Search")
+        self.central_layout.addWidget(self.search_line)
+
         self.tree_widget = MyTreeWidget()
         self.tree_widget.setHeaderLabels(["Projects:"])
         self.central_layout.addWidget(self.tree_widget)
         self.tree_widget.setContextMenuPolicy(QtCore.Qt.CustomContextMenu)
+        self.tree_widget.setSelectionMode(QtWidgets.QAbstractItemView.SingleSelection)
         self.tree_widget.setFocus()
         self.max_tree_depth = 3
 
@@ -94,6 +100,9 @@ class TraceProjectIndex(QtWidgets.QMainWindow):
 
         # ===============================================================================================================
         # Widget signal connections
+        self.search_line.textEdited.connect(self.run_search)
+        self.search_line.textChanged.connect(self.reset_search_state)
+
         self.info_button.clicked.connect(self.show_info_popup)
 
         self.add_button.clicked.connect(self.add_tree_item)
@@ -438,6 +447,42 @@ class TraceProjectIndex(QtWidgets.QMainWindow):
                 "The following DCC(s) will be skipped during folder creation because their "
                 "templates were not found:\n\n" + "\n".join(
                     skipped_dcc))
+
+    # Search
+    def run_search(self):
+        """
+        Runs a search using a Trie and updates the search_output QListWidget
+        with the matching results.
+        """
+        if not self.searching and self.search_line.text():
+            # self.search_output.clearSelection()
+            self.searching = True
+
+        search_text = self.search_line.text().lower()
+
+        trie = trie_search.Trie()
+
+        list_items = []
+        for i in range(self.tree_widget.topLevelItemCount()):
+            top_item = self.tree_widget.topLevelItem(i)
+            list_items.append(top_item)
+
+        for prim in list_items:
+            trie.insert(prim.text(0).lower())
+
+        search_results = set(trie.autocomplete(search_text))
+
+        for i in range(self.tree_widget.topLevelItemCount()):
+            item = self.tree_widget.topLevelItem(i)
+
+            if item.text(0).lower() in search_results or self.search_line.text() == '':
+                item.setHidden(False)
+            else:
+                item.setHidden(True)
+
+    def reset_search_state(self, text):
+        if not text:
+            self.searching = False
 
     # Ctrl + Z Logic
     def undo_action(self):
