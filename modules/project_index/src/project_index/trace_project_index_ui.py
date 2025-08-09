@@ -262,17 +262,19 @@ class TraceProjectIndex(QtWidgets.QMainWindow):
                 index = self.tree_widget.indexOfTopLevelItem(item)
                 self.tree_widget.takeTopLevelItem(index)
 
-    def validate_item_name(self, item):
+    def validate_item_name(self, item, column):
         """
         Validates the item's name:
         - Sets to 'Untitled' if empty
-        - Replaces spaces with underscores
+        - Replaces not alphanumeric characters with underscores
         """
-        if item.text(0) == "":
+        text = item.text(0)
+        if not text:
             item.setText(0, "Untitled")
-        elif " " in item.text(0):
-            new_text = item.text(0).replace(" ", "_")
-            item.setText(0, new_text)
+            return
+        safe = re.sub(r'[^A-Za-z0-9_-]+', '_', text)
+        if safe != text:
+            item.setText(0, safe)
 
     def update_project_index(self):
         """
