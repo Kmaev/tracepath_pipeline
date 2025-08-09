@@ -86,10 +86,13 @@ class TraceProjectIndex(QtWidgets.QMainWindow):
         self.create_folder_structure_btn = QtWidgets.QPushButton("Create Folder Structure")
         self.central_layout.addWidget(self.create_folder_structure_btn)
         # Load and set style
-        style_file = os.path.join(style_folder, "style.qss")
-        with open(style_file, 'r') as f:
-            style = f.read()
 
+        style = ""
+        if style_folder:
+            style_file = os.path.join(style_folder, "style.qss")
+            if os.path.isfile(style_file):
+                with open(style_file, 'r') as f:
+                    style = f.read()
         self.setStyleSheet(style)
 
         if self.parent():
@@ -273,8 +276,12 @@ class TraceProjectIndex(QtWidgets.QMainWindow):
             item.setText(0, "Untitled")
             return
         safe = re.sub(r'[^A-Za-z0-9_-]+', '_', text)
-        if safe != text:
+        if safe != item.text(0):
+            # Block signals to prevent setText() from re-triggering itemChanged
+            # and triggering validate_item_name to run again in a loop.
+            old = self.tree_widget.blockSignals(True)
             item.setText(0, safe)
+            self.tree_widget.blockSignals(old)
 
     def open_project_index(self, index_path: str) -> dict:
         """
@@ -351,7 +358,7 @@ class TraceProjectIndex(QtWidgets.QMainWindow):
         and updates the project index.
         """
         if not self.show_root:
-            QtWidgets.QMessageBox.critical(self, "Error", "Environment variable 'PR_SHOW_ROOT' is not set.")
+            QtWidgets.QMessageBox.critical(self, "Error", "Environment variable 'PR_PROJECTS_PATH' is not set.")
             return
 
         input_name = self.create_project_line_edit.text()
@@ -608,7 +615,6 @@ class TraceProjectIndex(QtWidgets.QMainWindow):
             "    'Item' would be the shot or asset name (e.g., 'shot_0010' or 'city_building_01').\n\n"
             "• You can see an example of the recommended structure at the top of the window."
         )
-
 
 class MyTreeWidget(QtWidgets.QTreeWidget):
     delete_key_pressed = QtCore.Signal()
