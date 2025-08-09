@@ -47,10 +47,9 @@ if [ ! -d "$task_path" ]; then
             exit 1
         fi
 
-        "$python_bin" /Users/kmaev/Documents/hou_dev/tracepath_pipeline/modules/project_index/src/project_index/cli_create_task.py \
+        "$python_bin" "$(dirname "$0")/cli_create_task.py" \
             --name "$task_name" --dccs "${dccs[@]}"
 
-        #echo -e "${GREEN}Created task '${BOLD}$task_name${NC}${GREEN}' with DCC folders: ${dccs[*]}${NC}"
     else
         echo -e "${BLUE}Cancelled. No task created.${NC}"
         exit 0

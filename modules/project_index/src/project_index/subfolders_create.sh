@@ -22,5 +22,5 @@ if [ ! -d "$base_path" ]; then
 fi
 
 # Call Python script with --dccs and passed arguments
-"$python_bin" /Users/kmaev/Documents/hou_dev/tracepath_pipeline/modules/project_index/src/project_index/cli_create_subfolder.py \
+"$python_bin" "$(dirname "$0")/cli_create_subfolder.py" \
     --dccs "$@"
