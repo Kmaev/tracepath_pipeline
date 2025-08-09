@@ -4,7 +4,7 @@ import re
 import sys
 from importlib import reload
 
-from PySide6 import QtWidgets, QtCore, QtGui  # This should run on PySide2 add PySide2 package to REZ env
+from PySide6 import QtWidgets, QtCore, QtGui
 
 import trie_search
 import utils
@@ -123,11 +123,11 @@ class TraceProjectIndex(QtWidgets.QMainWindow):
         self.create_folder_structure_btn.clicked.connect(self.create_folder_structure)
 
         # Shortcuts signal connections
-        self.undo_shortcut = QtGui.QShortcut(QtGui.QKeySequence("Ctrl+Z"), self)
-        self.undo_shortcut.activated.connect(self.undo_action)
+        undo_shortcut = QtGui.QShortcut(QtGui.QKeySequence("Ctrl+Z"), self)
+        undo_shortcut.activated.connect(self.undo_action)
 
-        self.add_shortcut = QtGui.QShortcut(QtGui.QKeySequence("N"), self)
-        self.add_shortcut.activated.connect(self.add_tree_item)
+        add_shortcut = QtGui.QShortcut(QtGui.QKeySequence("N"), self)
+        add_shortcut.activated.connect(self.add_tree_item)
 
         shortcut = QtGui.QShortcut(QtGui.QKeySequence("Esc"), self.tree_widget)
         shortcut.activated.connect(lambda: self.tree_widget.clearSelection())
