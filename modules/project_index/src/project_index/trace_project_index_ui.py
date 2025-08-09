@@ -276,22 +276,38 @@ class TraceProjectIndex(QtWidgets.QMainWindow):
         if safe != text:
             item.setText(0, safe)
 
+    def open_project_index(self, index_path: str) -> dict:
+        """
+        Load the project index JSON
+        Returns {} if the file is missing or invalid JSON.
+        """
+        if os.path.isfile(index_path):
+            try:
+                with open(index_path, 'r') as f:
+                    return json.load(f)
+            except json.JSONDecodeError:
+                QtWidgets.QMessageBox.critical(
+                    self,
+                    "Error",
+                    f"The project index file at {index_path} is corrupted "
+                    "and could not be read. Starting with an empty index."
+                )
+                return {}
+        else:
+            return {}
+
     def update_project_index(self):
         """
-        Updates the project index JSON file based on the current tree widget structure.
-        Executed when 'Create Folder Structure' is pressed.
+        Update the project index JSON based on the current tree structure for the
+        selected project. Called when 'Create Folder Structure' is pressed.
         """
         input_name = self.create_project_line_edit.text()
 
-        dirname = os.path.dirname(self.project_index_path)
-        if not os.path.isdir(dirname):
-            os.makedirs(dirname)
+        os.makedirs(os.path.dirname(self.project_index_path), exist_ok=True)
+        project_index = self.open_project_index(self.project_index_path)
 
-        with open(self.project_index_path, 'r') as f:
-            project_index = json.load(f)
-
+        #Build Project Index update data
         index = {}
-
         for i in range(self.tree_widget.topLevelItemCount()):
             top_item = self.tree_widget.topLevelItem(i)
             if top_item.text(0) == input_name:
@@ -300,6 +316,7 @@ class TraceProjectIndex(QtWidgets.QMainWindow):
                 index[project_key] = {}
                 self._walk(root, index[project_key], 0)
                 break
+
         project_index.update(index)
 
         with open(self.project_index_path, 'w') as output_file:
