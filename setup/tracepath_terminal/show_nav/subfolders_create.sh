@@ -1,7 +1,4 @@
 #!/bin/bash
-
-export PATH="/bin:/usr/bin:/usr/local/bin:$PATH"
-
 # Get Python from REZ or system
 python_bin=$(which python)
 
@@ -21,6 +18,5 @@ if [ ! -d "$base_path" ]; then
     exit 1
 fi
 
-# Call Python script with --dccs and passed arguments
-"$python_bin" "$(dirname "$0")/cli_create_subfolder.py" \
-    --dccs "$@"
+#CLI tool call
+"$python_bin" -m project_index.cli_create_subfolder --dccs "$@"

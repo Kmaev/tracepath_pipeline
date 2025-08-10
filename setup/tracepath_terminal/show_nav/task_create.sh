@@ -8,9 +8,7 @@ BLUE='\033[0;34m'
 BOLD='\033[1m'
 NC='\033[0m' # No Color
 
-export PATH="/bin:/usr/bin:/usr/local/bin:$PATH"
-
-# Get Python from REZ or system
+# Get Python from REZ env
 python_bin=$(which python)
 
 base_path="$PR_SHOW_ROOT/$PR_GROUP/$PR_ITEM"
@@ -47,8 +45,7 @@ if [ ! -d "$task_path" ]; then
             exit 1
         fi
 
-        "$python_bin" "$(dirname "$0")/cli_create_task.py" \
-            --name "$task_name" --dccs "${dccs[@]}"
+        "$python_bin" -m project_index.cli_create_task --name "$task_name" --dccs "${dccs[@]}"
 
     else
         echo -e "${BLUE}Cancelled. No task created.${NC}"
