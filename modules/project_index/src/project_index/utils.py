@@ -10,9 +10,8 @@ def get_dcc_template() -> dict:
     """
     Reads the JSON file containing folder templates for each DCC.
     """
-    script_dir = Path(__file__).parent
-
-    file_path = script_dir / "dcc_templates.json"
+    framework = os.getenv("PR_TRACEPATH_FRAMEWORK")
+    file_path = os.path.join(framework, "config/dcc_templates.json")
 
     with open(file_path) as f:
         templ_file = json.load(f)
@@ -73,7 +72,8 @@ def create_task(name: str, dcc_list: list):
         print(f"Created task '{name}' with DCC folder(s) '{checked_dcc}'")
 
         update_project_index(name)
-        print ("Project index updated")
+        print("Project index updated")
+
 
 def check_dcc_name(dcc_list: list):
     """
@@ -130,7 +130,8 @@ def check_dcc_name(dcc_list: list):
 
 
 def update_project_index(task):
-    project_index_path = os.environ.get("PROJECTS_INDEX_PATH")
+    framework = os.getenv("PR_TRACEPATH_FRAMEWORK")
+    project_index_path = os.path.join(framework, "config/trace_project_index.json")
     project = os.environ.get("PR_SHOW")
     group = os.environ.get("PR_GROUP")
     item = os.environ.get("PR_ITEM")
@@ -159,7 +160,6 @@ def add_dcc_folders(dcc_list: list):
     """
     Called from CLI creates subfolders on add function executed
     """
-
     context = os.path.join(get_context(), os.environ.get("PR_TASK"))
 
     if not os.path.isdir(context):

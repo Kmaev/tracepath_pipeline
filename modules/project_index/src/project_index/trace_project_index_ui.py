@@ -1,15 +1,18 @@
+import importlib
 import json
 import os
 import re
 import sys
-from importlib import reload
 
-from PySide6 import QtWidgets, QtCore, QtGui
+try:
+    from PySide6 import QtCore, QtGui, QtWidgets
+except ImportError:
+    from PySide2 import QtCore, QtGui, QtWidgets  # type: ignore
 
-import trie_search
-import utils
+from project_index import trie_search, utils
 
-reload(utils)
+for module in (utils, trie_search):
+    importlib.reload(module)
 
 
 class TraceProjectIndex(QtWidgets.QMainWindow):
@@ -24,7 +27,8 @@ class TraceProjectIndex(QtWidgets.QMainWindow):
 
         # Get env vars
         style_folder = os.environ.get("STYLE_KPROJECT_INDEX")
-        self.project_index_path = os.getenv("PROJECTS_INDEX_PATH")
+        framework = os.getenv("PR_TRACEPATH_FRAMEWORK")
+        self.project_index_path = os.path.join(framework, "config/trace_project_index.json")
         self.show_root = os.getenv("PR_PROJECTS_PATH")
 
         self.central_widget = QtWidgets.QWidget()
@@ -313,7 +317,7 @@ class TraceProjectIndex(QtWidgets.QMainWindow):
         os.makedirs(os.path.dirname(self.project_index_path), exist_ok=True)
         project_index = self.open_project_index(self.project_index_path)
 
-        #Build Project Index update data
+        # Build Project Index update data
         index = {}
         for i in range(self.tree_widget.topLevelItemCount()):
             top_item = self.tree_widget.topLevelItem(i)
@@ -615,6 +619,7 @@ class TraceProjectIndex(QtWidgets.QMainWindow):
             "    'Item' would be the shot or asset name (e.g., 'shot_0010' or 'city_building_01').\n\n"
             "• You can see an example of the recommended structure at the top of the window."
         )
+
 
 class MyTreeWidget(QtWidgets.QTreeWidget):
     delete_key_pressed = QtCore.Signal()
