@@ -8,4 +8,6 @@ def commands():
     global env
 
     env.PYTHONPATH.append("{root}/python")
+
+    env.STYLE_PROJECT_INDEX.set("{root}/resources")
     alias("trace_project", "python -m project_index.trace_project_index_ui")

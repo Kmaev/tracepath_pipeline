@@ -26,7 +26,7 @@ class TraceProjectIndex(QtWidgets.QMainWindow):
         self.searching = False
 
         # Get env vars
-        style_folder = os.environ.get("STYLE_KPROJECT_INDEX")
+        style_folder = os.environ.get("STYLE_PROJECT_INDEX")
         framework = os.getenv("PR_TRACEPATH_FRAMEWORK")
         self.project_index_path = os.path.join(framework, "config/trace_project_index.json")
         self.show_root = os.getenv("PR_PROJECTS_PATH")
