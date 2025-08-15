@@ -22,9 +22,10 @@ def get_node_env_data(node: hou.Node) -> dict:
     """
     Retrieve environment variables from HDA parameters.
     """
+    _require_env(["PR_ITEM", "PR_GROUP", "PR_TASK"])
     node_data = {
         "pr_group": node.parm("grp").evalAsString(),
-        "pr_item": node.parm("item").evalAsString(),
+        "pr_item": node.parm("name").evalAsString(),
         "pr_task": node.parm("task").evalAsString()
     }
     return node_data
@@ -222,7 +223,7 @@ def get_data_folder() -> Path:
 
 def get_publish_key(node: hou.Node) -> str:
     """
-    Helper function to get the publish key, publish key consist of group and item what in classic vfx pipeline would be
+    Helper function to get the publish key, publish key consist of group and name what in classic vfx pipeline would be
     sequence and shot.
     """
     node_data = get_node_env_data(node)
@@ -293,3 +294,68 @@ def read_publish_comment(node: hou.Node) -> str | None:
             return comment
 
     return None
+
+
+# =================================================================
+# Save HIP file
+
+def make_scene_path(dcc, scene_name) -> str:
+    """
+    Returns the file path for a scene based on the 'scene_file' template and the given DCC.
+    """
+    _require_env(["PR_PROJECTS_PATH", "PR_SHOW", "PR_ITEM", "PR_GROUP", "PR_TASK"])
+    env_data = {
+        "pr_projects_path": os.getenv("PR_PROJECTS_PATH"),
+        "pr_show": os.getenv("PR_SHOW"),
+        "pr_item": os.getenv("PR_ITEM"),
+        "pr_group": os.getenv("PR_GROUP"),
+        "pr_task": os.getenv("PR_TASK"),
+        "dcc": dcc,
+        "name": scene_name,
+        "version": "001",
+        "ext": ".hip",
+    }
+    templ = get_path_structure_templ("scene_file")
+    if not templ:
+        raise RuntimeError("Template 'scene_file' not found.")
+
+    scene_path = os.path.normpath(templ.format(**env_data))
+    scenes_folder = os.path.dirname(scene_path)
+    if not os.path.isdir(scenes_folder) or not os.path.isfile(scene_path):
+        return scene_path
+    latest = (get_latest_version_number(scenes_folder) or 0) + 1
+    env_data["version"] = "%03d" % latest
+    return os.path.normpath(templ.format(**env_data))
+
+
+def save_scene(scene_path):
+    """
+    Saves the scene to the given path.
+    """
+    if not os.path.isdir(os.path.dirname(scene_path)):
+        os.makedirs(os.path.dirname(scene_path))
+    hou.hipFile.save(scene_path)
+
+
+# ==================================================================
+# Open HIP file
+
+def get_task_context():
+    """
+    Returns the task context path based on environment variables.
+    """
+    _require_env(["PR_PROJECTS_PATH", "PR_SHOW", "PR_ITEM", "PR_GROUP", "PR_TASK"])
+    context = os.path.join(os.environ.get("PR_PROJECTS_PATH"), os.environ.get("PR_SHOW"),
+                           os.environ.get("PR_GROUP"),
+                           os.environ.get("PR_ITEM"), os.getenv("PR_TASK"))
+    context = os.path.normpath(context)
+    return context
+
+
+def _require_env(keys):
+    """
+    Helper function to ensure that all required environment variables are set.
+    """
+    miss = [k for k in keys if not os.getenv(k)]
+    if miss:
+        raise RuntimeError("Missing environment variables: " + ", ".join(miss))
