@@ -31,18 +31,21 @@ class SaveFileDialog(QtWidgets.QDialog):
         self.version_up_layout.addWidget(self.version_up_label)
 
         self.version_up_check = QtWidgets.QCheckBox()
-        self.version_up_check.setChecked(_houdini.is_fresh_scene())
-        self.version_up_check.setDisabled(not _houdini.is_fresh_scene())
+        self.version_up_check.setChecked(not _houdini.is_fresh_scene())
+        self.version_up_check.setDisabled(_houdini.is_fresh_scene())
         self.version_up_layout.addWidget(self.version_up_check)
 
-        self.input_label = QtWidgets.QLabel("Auto versioning is enabled - you can’t edit the name.")
+        self.text_labels = {"autoversion": "Auto versioning is enabled - you can’t edit the name.",
+                            "new_scene": "Type your scene name:"}
+        self.input_label = QtWidgets.QLabel(
+            self.text_labels["new_scene"] if _houdini.is_fresh_scene() else self.text_labels["autoversion"])
         self.central_layout.addWidget(self.input_label)
 
         self.name_input = QtWidgets.QLineEdit()
         self.name_input.setPlaceholderText("my_new_scene")
         self.name_input.setText(_houdini.get_current_file_name())
         self.name_input.setObjectName("scene_name")
-        self.name_input.setDisabled(_houdini.is_fresh_scene())
+        self.name_input.setDisabled(not _houdini.is_fresh_scene())
         self.central_layout.addWidget(self.name_input)
 
         spacerItem1 = QtWidgets.QSpacerItem(
@@ -87,10 +90,7 @@ class SaveFileDialog(QtWidgets.QDialog):
         self.name_input.setPlaceholderText("my_new_scene" if not checked else "")
         self.name_input.setText(_houdini.get_current_file_name() if checked else "")
         self.input_label.setText(
-            "Auto versioning is enabled - you can’t edit the name."
-            if checked else
-            "Type your scene name"
-        )
+            self.text_labels["autoversion"] if checked else self.text_labels["new_scene"])
 
     def get_scene_path_preview(self, text):
         name = re.sub(r'[^a-zA-Z0-9]', '_', text)

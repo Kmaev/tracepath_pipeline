@@ -1,4 +1,5 @@
 import os
+import re
 
 import hou
 from PySide2 import QtWidgets, QtCore
@@ -61,7 +62,7 @@ class OpenFileDialog(QtWidgets.QDialog):
                 hip_file_item = QtWidgets.QTreeWidgetItem(hip_folder_item)
                 hip_file_item.setText(0, display_name)
 
-                if hip_file.endswith(".hip"):
+                if re.search(r"\.hip\w*$", hip_file, re.IGNORECASE):
                     hip_file_item.setData(0, QtCore.Qt.UserRole, hip_file_path)
                     hip_file_item.setText(0, hip_file)
 

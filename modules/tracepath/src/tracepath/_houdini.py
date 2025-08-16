@@ -108,6 +108,10 @@ def set_latest_version(node: hou.Node, context: str):
     Set the node's version parameter to the latest version found in the context folder (Run from HDA on node creation).
     """
     version = get_latest_version_number(str(context))
+    print(f"VERSION: {version}")
+
+    if not version:
+        version = 1
     node.parm("version").set(version)
 
 
@@ -306,17 +310,45 @@ def get_current_file_name():
 
 
 def is_fresh_scene() -> bool:
+    """
+    Check if the current Houdini session is a new scene
+    (not yet saved to disk) or an existing saved scene.
+    """
     path = hou.hipFile.name()
     path = os.path.exists(path)
     if path:
-        return True
-    return False
+        return False
+    return True
+
+
+def hip_ext_from_session() -> str:
+    """
+    Return the .hip* extension for the current Houdini session.
+    """
+    if not hasattr(hou, "licenseCategory"):
+        raise RuntimeError(
+            "No valid Houdini license detected"
+        )
+
+    mapping = {
+        hou.licenseCategoryType.Commercial: ".hip",
+        hou.licenseCategoryType.Indie: ".hiplc",
+        hou.licenseCategoryType.Apprentice: ".hipnc",
+        hou.licenseCategoryType.Education: ".hipnc"
+    }
+
+    cat = hou.licenseCategory()
+    try:
+        return mapping[cat]
+    except KeyError:
+        raise RuntimeError(f"Unsupported/unknown license category: {cat!r}")
 
 
 def make_scene_path(dcc, scene_name) -> str | None:
     """
     Returns the file path for a scene based on the 'scene_file' template and the given DCC.
     """
+    ext = hip_ext_from_session()
     if scene_name != "":
         _require_env(["PR_PROJECTS_PATH", "PR_SHOW", "PR_ITEM", "PR_GROUP", "PR_TASK"])
         env_data = {
@@ -328,7 +360,7 @@ def make_scene_path(dcc, scene_name) -> str | None:
             "dcc": dcc,
             "name": scene_name,
             "version": "001",
-            "ext": ".hip",
+            "ext": ext,
         }
         templ = get_path_structure_templ("scene_file")
         if not templ:
