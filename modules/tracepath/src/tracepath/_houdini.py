@@ -305,6 +305,14 @@ def get_current_file_name():
     return hip_name
 
 
+def is_fresh_scene() -> bool:
+    path = hou.hipFile.name()
+    path = os.path.exists(path)
+    if path:
+        return True
+    return False
+
+
 def make_scene_path(dcc, scene_name) -> str | None:
     """
     Returns the file path for a scene based on the 'scene_file' template and the given DCC.

@@ -71,12 +71,14 @@ QLineEdit:disabled {
     font-style: bold;
 }
 
+
 QLineEdit#scene_name:disabled{
   color: #FF7A1A;
   border: 1px solid #FF7A1A;
   border-radius: 3px;
   padding: 3px 8px;
 }
+
 QTextEdit{
     border: none;
     border-radius: 0px;

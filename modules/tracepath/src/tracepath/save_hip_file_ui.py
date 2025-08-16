@@ -13,6 +13,7 @@ reload(_houdini)
 class SaveFileDialog(QtWidgets.QDialog):
     def __init__(self, parent=None):
         super(SaveFileDialog, self).__init__(parent=parent)
+
         self.scene_path = None
         self.resize(950, 220)
         self.setWindowTitle("Save File - TRACE")
@@ -30,17 +31,18 @@ class SaveFileDialog(QtWidgets.QDialog):
         self.version_up_layout.addWidget(self.version_up_label)
 
         self.version_up_check = QtWidgets.QCheckBox()
-        self.version_up_check.setChecked(True)
+        self.version_up_check.setChecked(_houdini.is_fresh_scene())
+        self.version_up_check.setDisabled(_houdini.is_fresh_scene())
         self.version_up_layout.addWidget(self.version_up_check)
 
         self.input_label = QtWidgets.QLabel("Auto versioning is enabled - you can’t edit the name.")
         self.central_layout.addWidget(self.input_label)
 
         self.name_input = QtWidgets.QLineEdit()
-        self.name_input.setPlaceholderText("my_new_houdini_scene")
+        self.name_input.setPlaceholderText("my_new_scene")
         self.name_input.setText(_houdini.get_current_file_name())
         self.name_input.setObjectName("scene_name")
-        self.name_input.setDisabled(True)
+        self.name_input.setDisabled(_houdini.is_fresh_scene())
         self.central_layout.addWidget(self.name_input)
 
         spacerItem1 = QtWidgets.QSpacerItem(
@@ -82,6 +84,7 @@ class SaveFileDialog(QtWidgets.QDialog):
 
     def on_version_up_toggled(self, checked: bool):
         self.name_input.setDisabled(checked)
+        self.name_input.setPlaceholderText("my_new_scene" if not checked else "")
         self.name_input.setText(_houdini.get_current_file_name() if checked else "")
         self.input_label.setText(
             "Auto versioning is enabled - you can’t edit the name."

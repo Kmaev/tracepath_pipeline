@@ -7,3 +7,4 @@ def commands():
     global env
 
     env.PYTHONPATH.append("{root}/python")
+    env.STYLE_TRACEPATH.set("{root}/resources")
