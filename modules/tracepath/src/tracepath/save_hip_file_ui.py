@@ -32,7 +32,7 @@ class SaveFileDialog(QtWidgets.QDialog):
 
         self.version_up_check = QtWidgets.QCheckBox()
         self.version_up_check.setChecked(_houdini.is_fresh_scene())
-        self.version_up_check.setDisabled(_houdini.is_fresh_scene())
+        self.version_up_check.setDisabled(not _houdini.is_fresh_scene())
         self.version_up_layout.addWidget(self.version_up_check)
 
         self.input_label = QtWidgets.QLabel("Auto versioning is enabled - you can’t edit the name.")
@@ -65,7 +65,7 @@ class SaveFileDialog(QtWidgets.QDialog):
 
         # Run on init
         self.get_scene_path_preview(self.name_input.text())
-        
+
         # Signal connections
         self.name_input.textChanged.connect(self.validate_scene_name)
         self.name_input.textChanged.connect(self.get_scene_path_preview)
