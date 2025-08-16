@@ -9,6 +9,7 @@ def build(source_path, build_path, install_path, targets):
 
     to_copy = {
         source_path / "show_nav" : install_path / "shell",
+        source_path / "houdini" : install_path / "houdini",
     }
 
     if "install" in targets:

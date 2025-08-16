@@ -8,6 +8,11 @@ def commands():
     import os
     global env
 
+
     env.PR_SHOW_ROOT = os.environ.get("PR_SHOW_ROOT", "")
     env.TRACEPATH_SHELL_ROOT.set("{root}/shell")
     source("{root}/shell/show_nav.sh")
+
+    env.HOUDINI_PATH.append(
+        "{root}/houdini/scripts")
+    env.HOUDINI_PATH.append("&")
