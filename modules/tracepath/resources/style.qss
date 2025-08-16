@@ -2,9 +2,9 @@
     /*font-family: "Calibri Regular";*/
    /* font-family: "Helvetica Neue";*/
    font-family: "Helvetica";
-    font-size: 14px;
-    color: #D8D8D8;
-    background-color: #282828;
+   font-size: 14px;
+   color: #D8D8D8;
+   background-color: #282828;
 }
 QGroupBox {
     border: none;
@@ -55,10 +55,27 @@ QSplitter::handle:hover {
     background-color: #a0a0a0;
 }
 QLineEdit, QSpinBox {
-    border: none;
+    color: #1DB954;
+    border: 1px solid #1DB954;
     border-radius: 3px;
+    padding: 3px 8px;
     background-color: #1E1E1E;
     padding: 4px 4px;
+}
+QLineEdit:disabled {
+    color: #D8D8D8;
+    border: none;
+    border-radius: 3px;
+    background-color: #282828;
+    padding: 4px 4px;
+    font-style: bold;
+}
+
+QLineEdit#scene_name:disabled{
+  color: #FF7A1A;
+  border: 1px solid #FF7A1A;
+  border-radius: 3px;
+  padding: 3px 8px;
 }
 QTextEdit{
     border: none;
@@ -156,20 +173,21 @@ QScrollBar::sub-line:horizontal {
 }
 
 QTreeView {
-    background-color: #1E1E1E;;
+    background-color: #282828;;
     border-radius: 0px;
     border: 0px;
     margin: 0px;
 }
 QTreeWidget::header {
-    background-color: #1E1E1E;
+    background-color: #282828;
     border: 0px;
 }
 
 QHeaderView::section {
-    background-color: #1E1E1E;
+    background-color: #282828;
     border: 0px;
     padding: 4px;
+
 }
 
 QTreeView::item {
@@ -183,12 +201,7 @@ QTreeView::item:selected {
 QTreeView::item::hover {
     background-color: #636363;
 }
-QTreeView QLineEdit {
-    border: none;
-    background-color: #3b3b3b;
-    color: #D8D8D8;
-    padding: -2px;
-}
+
 QLineEdit::item::pressed{
     color: red;
 }

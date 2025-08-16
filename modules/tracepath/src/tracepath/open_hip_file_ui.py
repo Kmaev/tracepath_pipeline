@@ -11,29 +11,30 @@ class OpenFileDialog(QtWidgets.QDialog):
         super(OpenFileDialog, self).__init__(parent=parent)
         self.setObjectName('OpenDialog')
         self.resize(800, 500)
+        self.setWindowTitle("Open File - TRACE")
 
         self.central_layout = QtWidgets.QVBoxLayout()
         self.setLayout(self.central_layout)
 
-        self.root_label = QtWidgets.QLabel("Root:")
-
-        self.user_data = _houdini.get_task_context()
-        self.user_data = os.path.join(self.user_data, f"{dcc}/scenes")
+        self.root_label = QtWidgets.QLabel("Context:")
+        self.user_data = os.path.join(_houdini.get_task_context(), f"{dcc}/scenes")
+        self.central_layout.addWidget(self.root_label)
 
         self.tree_widget = QtWidgets.QTreeWidget(self)
         self.tree_widget.setHeaderLabels([self.user_data])
-
-        self.load_button = QtWidgets.QPushButton("Load")
-
-        self.central_layout.addWidget(self.root_label)
         self.central_layout.addWidget(self.tree_widget)
-        self.central_layout.addWidget(self.load_button)
 
+        self.open_button = QtWidgets.QPushButton("Open")
+        self.central_layout.addWidget(self.open_button)
+
+        # Run on init
         self.populate_tree()
 
-        self.load_button.clicked.connect(self.on_load)
-        self.tree_widget.itemDoubleClicked.connect(self.on_load)
+        # Signal connections
+        self.open_button.clicked.connect(self.on_open)
+        self.tree_widget.itemDoubleClicked.connect(self.on_open)
 
+        # Style
         style_folder = os.environ.get("STYLE_TRACEPATH")
         style = ""
         if style_folder:
@@ -48,13 +49,12 @@ class OpenFileDialog(QtWidgets.QDialog):
         hip_folders = [i for i in sorted(os.listdir(self.user_data)) if not i.startswith(".")]
 
         for hip_folder in hip_folders:
-
             hip_folder_item = QtWidgets.QTreeWidgetItem(root)
             hip_folder_item.setText(0, hip_folder)
 
             folder_path = os.path.join(self.user_data, hip_folder)
             hip_files = [i for i in sorted(os.listdir(folder_path)) if not i.startswith(".")]
-          
+
             for hip_file in hip_files:
                 hip_file_path = os.path.join(folder_path, hip_file)
                 display_name = hip_file.split("/")[-1]
@@ -65,7 +65,7 @@ class OpenFileDialog(QtWidgets.QDialog):
                     hip_file_item.setData(0, QtCore.Qt.UserRole, hip_file_path)
                     hip_file_item.setText(0, hip_file)
 
-    def on_load(self):
+    def on_open(self):
         item = self.tree_widget.selectedItems()[0]
         scene_path = item.data(0, QtCore.Qt.UserRole)
         hou.hipFile.load(scene_path)

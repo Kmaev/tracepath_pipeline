@@ -22,11 +22,11 @@ def get_node_env_data(node: hou.Node) -> dict:
     """
     Retrieve environment variables from HDA parameters.
     """
-    _require_env(["PR_ITEM", "PR_GROUP", "PR_TASK"])
+    _require_env(["PR_GROUP", "PR_ITEM", "PR_TASK"])
     node_data = {
-        "pr_group": node.parm("grp").evalAsString(),
-        "pr_item": node.parm("name").evalAsString(),
-        "pr_task": node.parm("task").evalAsString()
+        "pr_group": node.parm("grp").eval(),
+        "pr_item": node.parm("item").eval(),
+        "pr_task": node.parm("task").eval()
     }
     return node_data
 
@@ -299,33 +299,42 @@ def read_publish_comment(node: hou.Node) -> str | None:
 # =================================================================
 # Save HIP file
 
-def make_scene_path(dcc, scene_name) -> str:
+def get_current_file_name():
+    hip_name = hou.getenv("HIPNAME")
+    hip_name = "_".join(hip_name.split("_")[:-1])
+    return hip_name
+
+
+def make_scene_path(dcc, scene_name) -> str | None:
     """
     Returns the file path for a scene based on the 'scene_file' template and the given DCC.
     """
-    _require_env(["PR_PROJECTS_PATH", "PR_SHOW", "PR_ITEM", "PR_GROUP", "PR_TASK"])
-    env_data = {
-        "pr_projects_path": os.getenv("PR_PROJECTS_PATH"),
-        "pr_show": os.getenv("PR_SHOW"),
-        "pr_item": os.getenv("PR_ITEM"),
-        "pr_group": os.getenv("PR_GROUP"),
-        "pr_task": os.getenv("PR_TASK"),
-        "dcc": dcc,
-        "name": scene_name,
-        "version": "001",
-        "ext": ".hip",
-    }
-    templ = get_path_structure_templ("scene_file")
-    if not templ:
-        raise RuntimeError("Template 'scene_file' not found.")
+    if scene_name != "":
+        _require_env(["PR_PROJECTS_PATH", "PR_SHOW", "PR_ITEM", "PR_GROUP", "PR_TASK"])
+        env_data = {
+            "pr_projects_path": os.getenv("PR_PROJECTS_PATH"),
+            "pr_show": os.getenv("PR_SHOW"),
+            "pr_item": os.getenv("PR_ITEM"),
+            "pr_group": os.getenv("PR_GROUP"),
+            "pr_task": os.getenv("PR_TASK"),
+            "dcc": dcc,
+            "name": scene_name,
+            "version": "001",
+            "ext": ".hip",
+        }
+        templ = get_path_structure_templ("scene_file")
+        if not templ:
+            raise RuntimeError("Template 'scene_file' not found.")
 
-    scene_path = os.path.normpath(templ.format(**env_data))
-    scenes_folder = os.path.dirname(scene_path)
-    if not os.path.isdir(scenes_folder) or not os.path.isfile(scene_path):
-        return scene_path
-    latest = (get_latest_version_number(scenes_folder) or 0) + 1
-    env_data["version"] = "%03d" % latest
-    return os.path.normpath(templ.format(**env_data))
+        scene_path = os.path.normpath(templ.format(**env_data))
+        scenes_folder = os.path.dirname(scene_path)
+        if not os.path.isdir(scenes_folder) or not os.path.isfile(scene_path):
+            return scene_path
+        latest = (get_latest_version_number(scenes_folder) or 0) + 1
+        env_data["version"] = "%03d" % latest
+        return os.path.normpath(templ.format(**env_data))
+    else:
+        return None
 
 
 def save_scene(scene_path):
