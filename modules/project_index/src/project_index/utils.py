@@ -6,6 +6,8 @@ import re
 from pathlib import Path
 
 
+
+
 def get_dcc_template() -> dict:
     """
     Reads the JSON file containing folder templates for each DCC.

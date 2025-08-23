@@ -1,0 +1,55 @@
+{
+    "name": "main",
+    "type": "Scope",
+    "children": [
+        {
+            "name": "ASSETS",
+            "type": "Scope",
+            "children": [
+                {
+                    "name": "Cre",
+                    "type": "Scope",
+                    "children": []
+                },
+                {
+                    "name": "Env",
+                    "type": "Scope",
+                    "children": []
+                }
+            ]
+        },
+        {
+            "name": "SHOT",
+            "type": "Scope",
+            "children": [
+                {
+                    "name": "Env",
+                    "type": "Xform",
+                    "children": [
+                        {
+                            "name": "geom",
+                            "type": "Xform"
+                        },
+                        {
+                            "name": "dressing",
+                            "type": "Xform"
+                        }
+                    ]
+                },
+                 {
+                    "name": "cameras",
+                    "type": "Xform",
+                    "children": []
+                 },
+                {
+                    "name": "lights",
+                    "type": "Xform",
+                    "children": []
+                }
+            ]
+        }
+
+
+
+    ]
+}

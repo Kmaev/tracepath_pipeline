@@ -11,6 +11,14 @@ except ImportError:
 
 from project_index import trie_search, utils
 
+try:
+    from project_index import _usd
+    importlib.reload(_usd)
+except ImportError:
+    print("Skipping USD import in project_index")
+    _usd = None
+
+
 for module in (utils, trie_search):
     importlib.reload(module)
 
@@ -29,6 +37,7 @@ class TraceProjectIndex(QtWidgets.QMainWindow):
         style_folder = os.environ.get("STYLE_PROJECT_INDEX")
         framework = os.getenv("PR_TRACEPATH_FRAMEWORK")
         self.project_index_path = os.path.join(framework, "config/trace_project_index.json")
+        self.usd_template_path = os.path.join(framework, "config/usd_scene_template.json")
         self.show_root = os.getenv("PR_PROJECTS_PATH")
 
         self.central_widget = QtWidgets.QWidget()
@@ -159,8 +168,10 @@ class TraceProjectIndex(QtWidgets.QMainWindow):
 
         item = QtWidgets.QTreeWidgetItem(parent)
         item.setText(0, name)
+
         metadata = {"removable": removable,
-                    "type": "task" if count == 2 else "core"}
+                    "type": "task" if count == 3 else "item" if count == 2 else "core"}
+
         item.setData(0, QtCore.Qt.UserRole, metadata)
         if removable:
             item.setFlags(item.flags() | QtCore.Qt.ItemIsEditable)
@@ -438,10 +449,17 @@ class TraceProjectIndex(QtWidgets.QMainWindow):
             self.set_item_removable(child, False)
 
             folder_name = child.text(0)
-            metadata = item.data(0, QtCore.Qt.UserRole)
+            metadata = child.data(0, QtCore.Qt.UserRole)
             item_type = metadata.get("type")
 
             folder_path = os.path.join(current_path, folder_name)
+            try:
+                if item_type == "item":
+                    stage = os.path.join(str(folder_path), "main/v001/main_v001.usdc")
+                    _usd.create_scene_from_json(self.usd_template_path, stage)
+            except ImportError:
+                print("Skipping 'main' USD")
+
             if item_type == "task" and self.added_task_subfolders_check.isChecked():
                 dcc_list = self.include_software.text().split(" ")
                 for dcc_name in dcc_list:
