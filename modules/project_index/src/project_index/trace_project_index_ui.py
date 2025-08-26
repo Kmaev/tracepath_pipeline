@@ -1,26 +1,31 @@
 import importlib
 import json
+import logging
 import os
 import re
 import sys
+
+from project_index import trie_search, utils
+
+for module in (utils, trie_search):
+    importlib.reload(module)
+
+logging.basicConfig(level=logging.WARNING, format="%(levelname)s: %(message)s")
 
 try:
     from PySide6 import QtCore, QtGui, QtWidgets
 except ImportError:
     from PySide2 import QtCore, QtGui, QtWidgets  # type: ignore
 
-from project_index import trie_search, utils
-
 try:
     from project_index import _usd
+
     importlib.reload(_usd)
-except ImportError:
-    print("Skipping USD import in project_index")
+except ImportError as e:
+    logging.warning(
+        "Trace Project Index started without USD support.\n"
+        f"Reason: {e}\n\n")
     _usd = None
-
-
-for module in (utils, trie_search):
-    importlib.reload(module)
 
 
 class TraceProjectIndex(QtWidgets.QMainWindow):
@@ -98,8 +103,8 @@ class TraceProjectIndex(QtWidgets.QMainWindow):
 
         self.create_folder_structure_btn = QtWidgets.QPushButton("Create Folder Structure")
         self.central_layout.addWidget(self.create_folder_structure_btn)
-        # Load and set style
 
+        # Load and set style
         style = ""
         if style_folder:
             style_file = os.path.join(style_folder, "style.qss")
@@ -144,6 +149,26 @@ class TraceProjectIndex(QtWidgets.QMainWindow):
 
         shortcut = QtGui.QShortcut(QtGui.QKeySequence("Esc"), self.tree_widget)
         shortcut.activated.connect(lambda: self.tree_widget.clearSelection())
+
+    def show_usd_missing_warning(self):
+        """
+        Displays a warning if the USD package is not present in the environment.
+
+        If the UI is launched from the Tracepath terminal, it will not include the USD package.
+        The UI is still usable, but when creating Items (shots) it will not generate an initial usd scene template.
+        To have the template generated automatically, the UI must be launched within the specific
+        project_index and USD environment: rez env project_index usd -- trace_project
+        """
+        if _usd is None:
+            QtWidgets.QMessageBox.warning(
+                self,
+                "Warning",
+                "Trace Project Index started without USD support.\n\n"
+                "To enable USD features, please launch Trace Project Index from a new terminal "
+                "using the following environment:\n\n"
+                "    rez env project_index usd -- trace_project"
+
+            )
 
     def on_add_task_checked(self):
         """
@@ -453,12 +478,10 @@ class TraceProjectIndex(QtWidgets.QMainWindow):
             item_type = metadata.get("type")
 
             folder_path = os.path.join(current_path, folder_name)
-            try:
-                if item_type == "item":
-                    stage = os.path.join(str(folder_path), "main/v001/main_v001.usdc")
-                    _usd.create_scene_from_json(self.usd_template_path, stage)
-            except ImportError:
-                print("Skipping 'main' USD")
+
+            if item_type == "item" and _usd is not None:
+                stage = os.path.join(str(folder_path), "main/v001/main_v001.usdc")
+                _usd.create_scene_from_json(self.usd_template_path, stage)
 
             if item_type == "task" and self.added_task_subfolders_check.isChecked():
                 dcc_list = self.include_software.text().split(" ")
@@ -664,4 +687,5 @@ if __name__ == "__main__":
     app = QtWidgets.QApplication(sys.argv)
     w = TraceProjectIndex()
     w.show()
+    w.show_usd_missing_warning()
     sys.exit(app.exec())

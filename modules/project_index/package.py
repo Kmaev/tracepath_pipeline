@@ -2,7 +2,7 @@ name = "project_index"
 version = "1.0.0"
 build_command = "python {root}/build.py {install}"
 
-requires = ["pyside6"]
+requires = ["pyside6", "~usd"]
 
 def commands():
     global env

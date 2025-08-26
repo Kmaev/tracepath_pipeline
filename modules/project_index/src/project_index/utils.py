@@ -1,11 +1,12 @@
 import difflib
+import logging
 import json
 import os
 import re
 
 from pathlib import Path
 
-
+logging.basicConfig(level=logging.INFO, format="%(levelname)s: %(message)s")
 
 
 def get_dcc_template() -> dict:
@@ -13,7 +14,7 @@ def get_dcc_template() -> dict:
     Reads the JSON file containing folder templates for each DCC.
     """
     framework = os.getenv("PR_TRACEPATH_FRAMEWORK")
-    file_path = os.path.join(framework, "config/dcc_templates.json")
+    file_path = os.path.join(framework, "config/applications_templates.json")
 
     with open(file_path) as f:
         templ_file = json.load(f)
@@ -61,7 +62,7 @@ def create_task(name: str, dcc_list: list):
 
     context = get_context()
     if not os.path.isdir(context):
-        print(f"Not valid context {context}")
+        logging.error(f"Not valid context {context}")
     else:
         task_folder = os.path.join(context, name)
         # Add name validation check
@@ -71,10 +72,10 @@ def create_task(name: str, dcc_list: list):
 
         for dcc in checked_dcc:
             create_dcc_folder_structure(dcc, task_folder)
-        print(f"Created task '{name}' with DCC folder(s) '{checked_dcc}'")
+        logging.info(f"Created task '{name}' with DCC folder(s) '{checked_dcc}'")
 
         update_project_index(name)
-        print("Project index updated")
+        logging.info("Project index updated")
 
 
 def check_dcc_name(dcc_list: list):
@@ -105,11 +106,11 @@ def check_dcc_name(dcc_list: list):
                         confirmed_suggestions.append(suggestion)
                         break
                     elif user_input in ['n', 'no']:
-                        print(f"Skipping DCC '{_dcc}'.")
+                        logging.info(f"Skipping DCC '{_dcc}'.")
                         dcc_name = None
                         break
                     else:
-                        print("Please enter 'y'/'yes' or 'n'/'no'.")
+                        logging.info("Please enter 'y'/'yes' or 'n'/'no'.")
             else:
                 dcc_name = suggestion
         else:
@@ -121,7 +122,7 @@ def check_dcc_name(dcc_list: list):
             checked_dcc_list.append(dcc_name)
 
     if skipped_dcc:
-        print(
+        logging.info(f"Skipping DCC '{skipped_dcc}'."
             "Template Not Found\n"
             "The following DCC(s) will be skipped during folder creation because "
             "their templates were not found:\n\n"
@@ -149,11 +150,11 @@ def update_project_index(task):
     except KeyError as e:
         raise KeyError(f"Missing key in project index: {e}")
 
-        # Add task if it doesn't exist
+    # Add task if it doesn't exist
     if task not in tasks:
         tasks[task] = {}
 
-        # Write updated data back
+    # Write updated data back
         with open(project_index_path, 'w') as f:
             json.dump(data, f, indent=4)
 
@@ -165,10 +166,10 @@ def add_dcc_folders(dcc_list: list):
     context = os.path.join(get_context(), os.environ.get("PR_TASK"))
 
     if not os.path.isdir(context):
-        print(f"Not valid context {context}")
+        logging.error(f"Not valid context {context}")
     else:
         checked_dcc = check_dcc_name(dcc_list)
 
         for dcc in checked_dcc:
             create_dcc_folder_structure(dcc, context)
-        print(f"Created DCC folder(s) '{checked_dcc}'")
+        logging.info(f"Created DCC folder(s) '{checked_dcc}'")

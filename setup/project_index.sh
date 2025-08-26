@@ -17,7 +17,7 @@ export REZ_USED_RESOLVE_ENV="$PR_PROJECTS_PATH"
 
 rez env project_index usd -- trace_project
 
-# Detect OS 
+# Detect OS
 case "$(uname)" in
   Darwin)  # macOS
     osascript -e 'tell application "Terminal" to close front window' & exit
