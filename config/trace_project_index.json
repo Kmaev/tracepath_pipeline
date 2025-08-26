@@ -34,35 +34,12 @@
     },
     "CAT": {
         "groups": {
-            "seq2": {
-                "items": {
-                    "sh1000": {
-                        "tasks": {
-                            "env_library": {},
-                            "fx_destruction": {}
-                        }
-                    },
-                    "sh2000": {
-                        "tasks": {
-                            "fx_ground_destr": {}
-                        }
-                    }
-                }
-            }
-        }
-    },
-    "ven": {
-        "groups": {
             "seq1": {
                 "items": {
                     "sh0010": {
-                        "tasks": {}
-                    },
-                    "sh0020": {
-                        "tasks": {}
-                    },
-                    "sh0030": {
-                        "tasks": {}
+                        "tasks": {
+                            "env_library": {}
+                        }
                     }
                 }
             }
