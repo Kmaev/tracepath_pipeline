@@ -9,7 +9,17 @@ BOLD='\033[1m'
 NC='\033[0m' # No Color
 
 # Get Python from REZ env
-python_bin=$(which python)
+python_bin="${PYTHON:-}"
+if [[ -z "$python_bin" ]]; then
+  python_bin="$(command -v python || true)"
+fi
+if [[ -z "$python_bin" ]]; then
+  python_bin="$(command -v python3 || true)"
+fi
+if [[ -z "$python_bin" ]]; then
+  echo -e "${RED}No Python found in PATH. Ensure your REZ python package is active.${NC}"
+  exit 1
+fi
 
 base_path="$PR_SHOW_ROOT/$PR_GROUP/$PR_ITEM"
 task_path="$base_path/$PR_TASK"
@@ -38,6 +48,7 @@ if [ ! -d "$task_path" ]; then
         read -p "$(echo -e "${YELLOW}Enter task name followed by space-separated DCC folder names: ${NC}")" -a user_input
 
         task_name="${user_input[0]}"
+        export PR_TASK="${task_name}"
         dccs=("${user_input[@]:1}")
 
         if [[ -z "$task_name" || ${#dccs[@]} -eq 0 ]]; then
@@ -46,7 +57,6 @@ if [ ! -d "$task_path" ]; then
         fi
 
         "$python_bin" -m project_index.cli_create_task --name "$task_name" --dccs "${dccs[@]}"
-
     else
         echo -e "${BLUE}Cancelled. No task created.${NC}"
         exit 0

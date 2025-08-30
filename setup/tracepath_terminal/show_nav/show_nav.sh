@@ -14,35 +14,34 @@ cdtask() {
     export PR_GROUP="$1"
     export PR_ITEM="$2"
     export PR_TASK="$3"
-    local path="$PR_SHOW_ROOT/$PR_GROUP/$PR_ITEM/$PR_TASK"
+    local task_path="$PR_SHOW_ROOT/$PR_GROUP/$PR_ITEM/$PR_TASK"
 
-    if [[ -d "$path" ]]; then
-        cd "$path" || {
-            echo "[ERROR] Failed to change directory to: $path"
+    if [[ -d "$task_path" ]]; then
+        cd "$task_path" || {
+            echo "[ERROR] Failed to change directory to: $task_path"
 
             return 1
         }
         show_context
-        #echo "[INFO] Moved to: $path"
     else
-        echo "[ERROR] Task does not exist: $path"
+        echo "[ERROR] Task does not exist: $task_path"
         echo "========================================================================="
         "$TASK_CREATE_SH" "$PR_TASK" "$@"
-        cd "$path" || return 1
+        cd "$task_path" || return 1
     fi
 }
 
 add() {
-    local path="$PR_SHOW_ROOT/$PR_GROUP/$PR_ITEM/$PR_TASK"
-    if [[ ! -d "$path" ]]; then
-        echo "[ERROR] Context does not exist: $path"
+    local task_path="$PR_SHOW_ROOT/$PR_GROUP/$PR_ITEM/$PR_TASK"
+    if [[ ! -d "$task_path" ]]; then
+        echo "[ERROR] Context does not exist: $task_path"
         return 1
     fi
-    cd "$path" || {
-        echo "[ERROR] Failed to change directory to: $path"
+    cd "$task_path" || {
+        echo "[ERROR] Failed to change directory to: $task_path"
         return 1
     }
-    cd "$path" || return 1
+    cd "$task_path" || return 1
     "$SUBFOLDERS_SH" "$@"
     }
 
