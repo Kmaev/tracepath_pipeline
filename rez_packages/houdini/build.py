@@ -6,7 +6,7 @@ import stat
 import sys
 from pathlib import Path
 
-PKG_NAME = "houdini_test"
+PKG_NAME = "houdini"
 LOCALROOT = os.environ.get("REZ_LOCAL_PACKAGES_PATH", os.path.expanduser("~/rez-packages"))
 
 
