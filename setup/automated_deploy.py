@@ -1,14 +1,22 @@
+import logging
 import os
 import shutil
 import ssl
 import subprocess
+import sys
 import tempfile
 from io import BytesIO
 from pathlib import Path
 from urllib.request import urlopen
 from zipfile import ZipFile
 
-FRAMEWORK_ROOT = Path(__file__).parent.parent
+logging.basicConfig(level=logging.WARNING, format="%(levelname)s: %(message)s")
+
+FRAMEWORK_ROOT = os.environ.get("PR_TRACEPATH_FRAMEWORK")
+if not FRAMEWORK_ROOT:
+    logging.error(f"PR_TRACEPATH_FRAMEWORK values if {FRAMEWORK_ROOT}. Export it first.")
+    sys.exit(1)
+
 THIRD_PARTY_PACKAGES = FRAMEWORK_ROOT / "rez_packages"
 TRACE_MODULES = FRAMEWORK_ROOT / "modules"
 TRACE_PATH_TERMINAL = FRAMEWORK_ROOT / "setup/tracepath_terminal"
