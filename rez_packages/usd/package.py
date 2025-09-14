@@ -6,7 +6,6 @@ build_command = "python {root}/build.py {install}"
 def commands():
     import os
     global env
-    from pathlib import Path
 
     usd_root = "{root}/OpenUSD"
     env.PYTHONPATH.append(usd_root)

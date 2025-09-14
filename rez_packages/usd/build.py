@@ -1,12 +1,12 @@
 import os
+import shutil
 import sys
 from pathlib import Path
-import shutil
 
-def build(source_path:str, build_path:str, install_path:str, targets:list[str]):
+
+def build(source_path: str, build_path: str, install_path: str, targets: list[str]):
     install_path = Path(install_path)
     source_path = Path(source_path)
-
 
     to_copy = {
         source_path / "OpenUSD": install_path / "OpenUSD"
@@ -23,6 +23,7 @@ def build(source_path:str, build_path:str, install_path:str, targets:list[str]):
     else:
         print("Package does not build, doing nothing...")
 
+
 if __name__ == '__main__':
     build(
         source_path=os.environ['REZ_BUILD_SOURCE_PATH'],
@@ -30,7 +31,3 @@ if __name__ == '__main__':
         install_path=os.environ['REZ_BUILD_INSTALL_PATH'],
         targets=sys.argv[1:]
     )
-
-#To build rez package:
-# cd /Users/kmaev/Documents/hou_dev/tracepath_pipeline/modules/tracepath
-# rez build --install

@@ -31,18 +31,5 @@
                 }
             }
         }
-    },
-    "CAT": {
-        "groups": {
-            "seq1": {
-                "items": {
-                    "sh0010": {
-                        "tasks": {
-                            "env_library": {}
-                        }
-                    }
-                }
-            }
-        }
     }
 }

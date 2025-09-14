@@ -44,7 +44,7 @@ def get_build_exec(usd_download_folder):
 
 
 def get_latest_release_tag(repo: str, timeout: int = 10) -> str:
-    """Return the latest GitHub release tag (stable only)."""
+    """Return the latest GitHub release tag."""
     url = f"https://api.github.com/repos/{repo}/releases/latest"
     try:
         req = urllib.request.Request(url, headers={"User-Agent": "rez-bootstrap"})
@@ -130,8 +130,8 @@ if __name__ == "__main__":
     try:
         # Install packages that go via rez pip
         rez_pip_bootstrap()
-        # Download and build USD
 
+        # Download and build USD
         usd_url = get_usd_download_url()
         unzip(usd_url, USD_DOWNLOAD_FOLDER)
 

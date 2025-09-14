@@ -28,7 +28,7 @@ ssl._create_default_https_context = ssl._create_unverified_context  # Disable SS
 
 
 def get_latest_release_tag(repo: str, timeout: int = 10) -> str:
-    """Return the latest GitHub release tag (stable only)."""
+    """Return the latest GitHub release tag"""
     url = f"https://api.github.com/repos/{repo}/releases/latest"
     try:
         req = urllib.request.Request(url, headers={"User-Agent": "rez-bootstrap"})

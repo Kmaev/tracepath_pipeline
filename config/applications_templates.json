@@ -1,4 +1,3 @@
 {
-    "houdini":["scenes", "render", "cache", "comp"],
-    "katana": ["scenes", "render", "comp"]
+    "houdini":["scenes", "render", "cache", "comp"]
 }
