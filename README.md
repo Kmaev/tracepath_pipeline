@@ -77,7 +77,15 @@ python $PR_TRACEPATH_FRAMEWORK/setup/bootstrap.py
 ```bash
 python $PR_TRACEPATH_FRAMEWORK/setup/automated_deploy.py
 ```
+6. ## Houdini HDAs and Toolbar are stored in:
+
+`tracepath_pipeline/modules/tracepath/resources/`  
+
+- **HDAs** → copy into your Houdini `otls/` folder  
+- **Houdini shelves** → copy into your Houdini `toolbar/` folder
+
 **That’s it!**
+
 At this point, you should see packages created under your $REZ_LOCAL_PACKAGES_PATH.
 
 - arch  
