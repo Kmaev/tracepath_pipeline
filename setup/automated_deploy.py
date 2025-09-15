@@ -94,7 +94,7 @@ def execute_build_usd(build_exec: str, build_dir: str):
     """
     cmd = [
         "rez", "env", "PySide6", "PyOpenGL", "PyOpenGL_accelerate",
-        "--", "python", build_exec, build_dir
+        "--", sys.executable, build_exec, build_dir
     ]
     print("Running:", " ".join(cmd))
     subprocess.check_call(cmd)
