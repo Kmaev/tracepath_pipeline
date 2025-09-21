@@ -9,4 +9,43 @@
     <memberTool name="trace_save_file"/>
     <memberTool name="trace_open_file"/>
   </toolshelf>
+
+  <tool name="trace_save_file" label="TRACE Save File " icon="SOP_filecache">
+    <script scriptType="python"><![CDATA[import importlib
+import sys
+from tracepath import _houdini
+importlib.reload(_houdini)
+
+try:
+    trace_save = importlib.import_module('tracepath.save_hip_file_ui')
+  
+    importlib.reload(trace_save)
+    
+    trace_save.show_houdini()
+
+
+except ImportError as e:
+    print(f"ImportError: {e}")
+except Exception as e:
+    print(f"An error occurred: {e}")]]></script>
+  </tool>
+
+  <tool name="trace_open_file" label="TRACE Open File" icon="SOP_file">
+    <script scriptType="python"><![CDATA[import os
+import importlib
+from tracepath import _houdini
+importlib.reload(_houdini)
+try:
+    trace_open = importlib.import_module('tracepath.open_hip_file_ui')
+  
+    importlib.reload(trace_open)
+    
+    trace_open.show_houdini()
+
+
+except ImportError as e:
+    print(f"ImportError: {e}")
+except Exception as e:
+    print(f"An error occurred: {e}")]]></script>
+  </tool>
 </shelfDocument>

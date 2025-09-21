@@ -64,7 +64,7 @@ def rez_install():
             if os.path.exists(inst_script):
                 print(inst_script)
                 run(
-                    ["python", inst_script, "-v", str(REZ_INST_PATH)]
+                    [sys.executable, inst_script, "-v", str(REZ_INST_PATH)]
                 )
 
 
