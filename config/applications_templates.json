@@ -1,3 +1,6 @@
 {
-    "houdini":["scenes", "render", "cache", "comp"]
+  "houdini": ["scenes", "cache", "renders", "comp", "reference", "scripts", "textures", "lighting"],
+  "fusion": ["scenes", "plates", "renders", "comp", "reference","scripts"],
+  "blender": ["scenes", "cache", "geo", "renders", "comp", "reference",  "scripts","textures", "lighting", "assets"]
 }
+

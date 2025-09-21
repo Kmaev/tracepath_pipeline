@@ -27,12 +27,10 @@ def find_installs():
     sysname = platform.system()
     results = []
     if sysname == "Darwin":
-        # /Applications/Houdini/Houdini XX.YY.ZZ contains app bundles per edition
         for root in glob.glob("/Applications/Houdini/Houdini*"):
             v = _extract_version_from_path(root)
             results.append((v, root, sysname))
     elif sysname == "Linux":
-        # Typical: /opt/hfs20.5.403 and/or symlink /opt/hfs -> /opt/hfs20.5.403
         for p in glob.glob("/opt/hfs*"):
             v = _extract_version_from_path(p)
             results.append((v, os.path.realpath(p), sysname))
@@ -48,7 +46,7 @@ def find_macos_app(root, ver):
         p = os.path.join(root, n)
         if os.path.isdir(p):
             return p
-    # fallback to any .app inside the version folder
+    # fallback to any .app 
     apps = glob.glob(os.path.join(root, "*.app"))
     return apps[0] if apps else None
 
