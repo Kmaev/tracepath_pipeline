@@ -66,6 +66,27 @@ It runs on [Rez](https://github.com/AcademySoftwareFoundation/rez) — an open-s
 
   <img width="643" height="187" alt="image" src="https://github.com/user-attachments/assets/9e92130f-6ada-4900-8556-5d8b7a65f684" />
 
+  **Note:** Linux users may need to perform these additional steps to properly build and run the USD package, depending on their distribution.
+  **Install CMake**
+  ```bash
+  sudo apt update
+  sudo apt install -y cmake
+  ```
+
+  **Verify installation**
+  ```bash
+  cmake --version
+  ```
+  **Install X11 libraries (needed for GUI/OpenGL support, e.g., MaterialX and UsdView)**
+  ```bash
+  sudo apt install -y \
+  libx11-dev \
+  libxext-dev \
+  libxrender-dev \
+  libxrandr-dev \
+  libxi-dev \
+  libxt-dev
+  ```
 3. **Install Python 3.11**
 Rez and TracePath expect Python 3.11.
 
@@ -179,12 +200,35 @@ show_context
 - Your project data (sequences, shots, assets, tasks) is stored in:  
   `tracepath_pipeline/config/trace_project_index.json`
 
+## Houdini Tools:
+**Houdini Scene File Versioning System**
+<img width="945" height="253" alt="image" src="https://github.com/user-attachments/assets/1a1e4734-c0f1-4ebc-b168-320b6192637a" />
+<img width="945" height="249" alt="image" src="https://github.com/user-attachments/assets/18dd06d1-8c44-412d-b369-aa9b6da37017" />
+
+**Scene Browser to open and manage saved scenes in the context of each task.**
+<img width="801" height="523" alt="image" src="https://github.com/user-attachments/assets/17af35f0-75e4-43c4-92ea-c5a1d4af694f" />
+
+**Houdini HDAs**
+
+**Note:** Both HDAs are still in the prototype stage
+
+**TracePath Load USD Stage** – an HDA for loading published USD task edits, designed to simplify collaboration between artists.
+Handles time-sampled data and provide built-in stitching of per-frame USD files, simplifying the setup and editing of animated assets.
+
+<img width="747" height="370" alt="image" src="https://github.com/user-attachments/assets/c4125428-a20f-453b-9075-de38c7469397" />
+
+**TracePath USD Write**– an HDA to write USD files with versioning and a publishing system, with the possibility to attach comments to published versions.
+
+<img width="747" height="555" alt="image" src="https://github.com/user-attachments/assets/da0c7360-7830-467e-aa5e-767de508b35d" />
+
 ## Important Note!
 
 This project is still under development. If you find bugs, please report them 🙂
 
 Keep in mind this isn’t a bulletproof framework that will handle absolutely everything.
 Please use it in the spirit of its original intention and design. 🙂
+
+
 
 
 
