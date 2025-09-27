@@ -3,7 +3,11 @@ import re
 from importlib import reload
 
 import hou
-from PySide2 import QtWidgets, QtCore
+
+try:
+    from PySide2 import QtWidgets, QtCore  # type: ignore
+except ImportError:
+    from PySide6 import QtWidgets, QtCore
 
 from tracepath import _houdini
 
