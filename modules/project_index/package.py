@@ -11,3 +11,4 @@ def commands():
 
     env.STYLE_PROJECT_INDEX.set("{root}/resources")
     alias("trace_project", "python -m project_index.trace_project_index_ui")
+    alias("trace_reset", "python -m project_index.trace_reset_ui")
