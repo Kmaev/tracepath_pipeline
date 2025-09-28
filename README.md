@@ -53,7 +53,7 @@ It runs on [Rez](https://github.com/AcademySoftwareFoundation/rez) — an open-s
    export PR_PROJECTS_PATH="/Users/kmaev/Documents/hou_dev/houdini_scenes/Projects"
 
    # Tracepath Framework Root — root folder of this repo
-   # (TODO: add screenshot of folder structure)
+  
    export PR_TRACEPATH_FRAMEWORK="/Users/kmaev/Documents/hou_dev/tracepath_pipeline/"
 
    # Rez in PATH (don’t modify this line)
