@@ -136,6 +136,8 @@ class TraceResetUI(QtWidgets.QMainWindow):
 
         # Signals
         self.projects.itemSelectionChanged.connect(self.on_project_changed)
+        self.groups.itemSelectionChanged.connect(self.on_group_changed)
+        self.items.itemSelectionChanged.connect(self.on_pr_item_changed)
         for widget in (self.projects, self.groups, self.items, self.tasks):
             widget.setContextMenuPolicy(QtCore.Qt.CustomContextMenu)
             widget.customContextMenuRequested.connect(partial(self.open_mark_to_del_menu, widget))
@@ -153,6 +155,15 @@ class TraceResetUI(QtWidgets.QMainWindow):
 
     def selected_project(self):
         return self.get_selection(self.projects)
+
+    def selected_group(self):
+        return self.get_selection(self.groups)
+
+    def selected_item(self):
+        return self.get_selection(self.items)
+
+    def selected_task(self):
+        return self.get_selection(self.tasks)
 
     def populate_project_list(self):
         for i in self.pr_index_read.keys():
@@ -181,10 +192,44 @@ class TraceResetUI(QtWidgets.QMainWindow):
             item.setData(QtCore.Qt.UserRole + 1, preview_path)
 
             self.groups.addItem(item)
+    def on_group_changed(self):
+            self.items.clear()
+            project = self.selected_project()
+            group = self.selected_group()
+            if not group:
+                return
+            pr_items = self.pr_index_read[project]["groups"][group]["items"]
+            pr_items = dict(sorted(pr_items.items()))
+            for pr_item, meta in pr_items.items():
+                item = QtWidgets.QListWidgetItem(pr_item)
+
+                preview_path = {f"{project}/{group}/{pr_item}"}
+
+                item.setData(QtCore.Qt.UserRole, pr_item)
+                item.setData(QtCore.Qt.UserRole + 1, preview_path)
+
+                self.items.addItem(item)
+    def on_pr_item_changed(self):
+            self.tasks.clear()
+            project = self.selected_project()
+            group = self.selected_group()
+            pr_item = self.selected_item()
+            if not pr_item:
+                return
+            pr_tasks = self.pr_index_read[project]["groups"][group]["items"][pr_item]["tasks"]
+            pr_tasks = dict(sorted(pr_tasks.items()))
+            for pr_task, meta in pr_tasks.items():
+                item = QtWidgets.QListWidgetItem(pr_task)
+
+                preview_path = {f"{project}/{group}/{pr_item}/{pr_task}"}
+
+                item.setData(QtCore.Qt.UserRole, pr_task)
+                item.setData(QtCore.Qt.UserRole + 1, preview_path)
+
+                self.tasks.addItem(item)
+
 
     # TODO implement on_group_changed and on_item_chnaged
-    def on_group_changed(self):
-        pass
 
     def in_item_changed(self):
         pass
@@ -231,9 +276,8 @@ class TraceResetUI(QtWidgets.QMainWindow):
         for idx in range(self.marked_to_delete.count()):
             item = self.marked_to_delete.item(idx)
             item_data = item.data(QtCore.Qt.UserRole)
+            logging.info(f"Item data to delete: {item_data}")
 
-            # Delete item from project index json file
-            self.recursive_delete(self.pr_index_read, item_data)
 
             # Delete folder
             projects = os.environ.get("PR_PROJECTS_PATH")
@@ -242,6 +286,11 @@ class TraceResetUI(QtWidgets.QMainWindow):
             shutil.rmtree(folder_to_remove)
             # TODO Add UI popup window listing the folders that were deleted
             logging.info(f"Removed: {folder_to_remove}")
+
+            # Delete item from project index json file
+            self.recursive_delete(self.pr_index_read, item_data)
+            self.marked_to_delete.takeItem(self.marked_to_delete.row(item))
+
 
         with open(self.project_index_path, "w") as write_file:
             json.dump(self.pr_index_read, write_file, indent=4)
