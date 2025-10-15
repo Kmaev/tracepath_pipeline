@@ -14,6 +14,22 @@ except ImportError:
     from PySide2 import QtCore, QtGui, QtWidgets
 
 
+# TODO:
+#
+# 1. Change UI layout, tasks list widget and main_usd list widget should be in separate group widget
+# and appear one on top of another as they are both populated when the item is selected in items list widget
+
+# 2. re visit all try except blocks and change them if needed. The idea is to anticipated missing data and
+# keep try except only when the actual not expected event is happening
+# 3. change dictionaries and data query to use `.get()` method - same reason anticipated missing data
+
+# 4. On the item from main usd list add right click menu with the feature to explore the content of usd file
+# possible scenarios:
+# A. Add text edit to output the content of the usd file.
+# B: Add open in  Usd View  - the inspection of usd file happens there
+# C: Both options?
+
+
 class TraceResetUI(QtWidgets.QMainWindow):
     def __init__(self, parent=None):
         super(TraceResetUI, self).__init__(parent=parent)
@@ -236,19 +252,14 @@ class TraceResetUI(QtWidgets.QMainWindow):
             show_data = os.path.join(self.pr_projects_path, project, "show_data/published_data.json")
 
             published_data = self.read_published_data(show_data)
-            # TODO RE DO Error handling based on try / except blocks
+            # TODO continue re doing error handling
             try:
                 data_key = f"{group}_{pr_item}"
                 for published_tag in published_data.keys():
 
                     if data_key not in published_tag:
-                        # Log the message
                         logging.info(f"No published data found for {data_key}. Skipping to next item.")
-
-                        # Explicitly skip the rest of the current loop iteration
                         continue
-
-                    # If the key IS found, the code reaches this point:
                     for version in published_data[data_key].keys():
                         ver_preview_name = version.split("/")[-1]
 
@@ -270,7 +281,6 @@ class TraceResetUI(QtWidgets.QMainWindow):
             return None
 
     # Project data modification:
-
     def open_mark_to_del_menu(self, widget, position):
         """
                 Opens the right-click context menu for the selected item.
@@ -288,12 +298,10 @@ class TraceResetUI(QtWidgets.QMainWindow):
 
         metadata = orig_item.data(QtCore.Qt.UserRole)
 
-        # logging.info(f"METADATA READ: {metadata1}")
         preview_path = metadata["preview_path"]
 
-        # logging.info(f"PREVIEW PATH: {preview_path}")
         item = QtWidgets.QListWidgetItem(preview_path)
-        # We store the reference tothe original item in QtCore.Qt.UserRole + 1
+        # We store the reference to the original item in QtCore.Qt.UserRole + 1
         item.setData(QtCore.Qt.UserRole + 1, metadata)
         self.marked_to_delete.addItem(item)
 
@@ -352,16 +360,12 @@ class TraceResetUI(QtWidgets.QMainWindow):
         for item in items_to_process:
             marked_item_meta = item.data(QtCore.Qt.UserRole + 1)
 
-            # project = marked_item.data(QtCore.Qt.UserRole)["project"]
             path_to_remove = Path(self.pr_projects_path) / item.text()
-
             try:
                 if marked_item_meta["type"] == "main_usd":
                     show_data = os.path.join(self.pr_projects_path, marked_item_meta["project"],
                                              "show_data/published_data.json")
-
                     published_data = self.read_published_data(show_data)
-
                     self.update_published_data(item.text(), published_data)
                     with open(show_data, "w") as write_file:
                         json.dump(published_data, write_file, indent=4)
