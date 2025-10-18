@@ -3,7 +3,7 @@ import logging
 import os
 import shutil
 import sys
-from functools import partial
+from functools import partial, reduce
 from pathlib import Path
 
 logging.basicConfig(level=logging.INFO, format="%(levelname)s: %(message)s")
@@ -15,19 +15,14 @@ except ImportError:
 
 
 # TODO:
-#
-# 1. Change UI layout, tasks list widget and main_usd list widget should be in separate group widget
-# and appear one on top of another as they are both populated when the item is selected in items list widget
+# 1. Change UI layout: The tasks list widget and main_usd list widget should be in a separate group widget
+# and appear one on top of the other, as both are populated when an item is selected in the items list widget.
 
-# 2. re visit all try except blocks and change them if needed. The idea is to anticipated missing data and
-# keep try except only when the actual not expected event is happening
-# 3. change dictionaries and data query to use `.get()` method - same reason anticipated missing data
-
-# 4. On the item from main usd list add right click menu with the feature to explore the content of usd file
-# possible scenarios:
-# A. Add text edit to output the content of the usd file.
-# B: Add open in  Usd View  - the inspection of usd file happens there
-# C: Both options?
+# 2. Add a right-click context menu to items in the main_usd list  widget to allow exploring the content of the USD file.
+# Possible scenarios:
+# A. Add a text edit area to output the USD file content.
+# B. Add an 'Open in USD View' action for file inspection.
+# C. Implement both options (A and B).
 
 
 class TraceResetUI(QtWidgets.QMainWindow):
@@ -54,8 +49,7 @@ class TraceResetUI(QtWidgets.QMainWindow):
         self.splitter.setSizes([3, 1])
         self.central_layout.addWidget(self.splitter)
 
-        # Display widgets
-        # ===============================================================================
+        # DISPLAY WIDGETS ---------------------------------
         self.display_widget = QtWidgets.QWidget()
         self.display_widget.setMinimumHeight(200)
         self.splitter.addWidget(self.display_widget)
@@ -114,8 +108,7 @@ class TraceResetUI(QtWidgets.QMainWindow):
         self.main_usd = QtWidgets.QListWidget(self)
         self.main_usd_layout.addWidget(self.main_usd)
 
-        # Delete widgets
-        # ===============================================================================
+        # DELETE WIDGETS ---------------------------------
         self.delete_widget = QtWidgets.QWidget()
         self.delete_widget.setMinimumHeight(200)
         self.splitter.addWidget(self.delete_widget)
@@ -149,10 +142,10 @@ class TraceResetUI(QtWidgets.QMainWindow):
         if self.parent():
             self.parent().setStyleSheet(self.parent().styleSheet())
 
-        # Functions executed on init
+        # FUNCTIONS EXECUTED ON INIT ---------------------------------
         self.populate_project_list()
 
-        # Signals
+        # SIGNALS ---------------------------------
         self.projects.itemSelectionChanged.connect(self.on_project_changed)
         self.groups.itemSelectionChanged.connect(self.on_group_changed)
         self.items.itemSelectionChanged.connect(self.on_pr_item_changed)
@@ -167,7 +160,7 @@ class TraceResetUI(QtWidgets.QMainWindow):
         self.delete_btn.clicked.connect(self.on_del_exec)
         self.delete_btn.clicked.connect(self.clean_up_ui)
 
-    # Project components browsing
+        # PROJECT COMPONENTS BROWSING ---------------------------------
 
     def get_selection(self, widget):
         selected = widget.selectedItems()
@@ -185,93 +178,132 @@ class TraceResetUI(QtWidgets.QMainWindow):
     def selected_task(self):
         return self.get_selection(self.tasks)
 
-    def populate_project_list(self):
-        for i in self.pr_index_read.keys():
-            meta = {"preview_path": i, "project": i, "type": "project"}
-            self.create_list_item(i, self.projects, meta)
-
-    def create_list_item(self, item_name, parent_widget, metadata):
+    def create_list_item(self, item_name: str, parent_widget: object, metadata: dict):
+        """
+        Creates a QListWidgetItem, embeds metadata, and adds it to the parent widget.
+        The function modifies the provided metadata by adding the 'item_name'.
+        """
         item = QtWidgets.QListWidgetItem(item_name)
         metadata["item_name"] = item_name
         item.setData(QtCore.Qt.UserRole, metadata)
         parent_widget.addItem(item)
 
+    def populate_project_list(self):
+        for i in self.pr_index_read.keys():
+            meta = {"preview_path": i, "project": i, "type": "project"}
+            self.create_list_item(i, self.projects, meta)
+
+    def get_nested_data(self, data: dict, data_keys: list) -> dict or None:
+        """
+        Retrieve data from the nested dictionary (project_index)
+        """
+        if not isinstance(data, dict):
+            logging.warning("Invalid data provided; data must be a dictionary.")
+            return
+        result = reduce(lambda df, data_key: df.get(data_key) if isinstance(df, dict) else None, data_keys,
+                        data)
+        return result
+
     def on_project_changed(self):
-        self.groups.clear()
+        """
+        Executes when the user changes the project selection.
+        Clears all dependent widgets and, based on the newly selected project,
+        populates the groups QListWidget.
+        """
         self.main_usd.clear()
+        self.tasks.clear()
+        self.items.clear()
+        self.groups.clear()
         project = self.selected_project()
         if not project:
-            logging.warning(f"Project: {project} not found")
             return
-        project_data = self.pr_index_read.get(project)
-        if not project_data:
-            logging.warning(f"No project data found for project: '{project}'. Skipping group loading.")
-            return
-        groups = project_data.get("groups")
+        data_keys = [project, "groups"]
+
+        groups = self.get_nested_data(self.pr_index_read, data_keys)
         if not groups:
-            logging.error(f"No groups found in project: '{project}'. Cannot populate groups list.")
+            logging.warning(f"No 'groups' data found in the index for project: '{project}'. Skipping population.")
             return
-        groups = dict(sorted(groups.items()))
         for group, meta in groups.items():
             meta = {"preview_path": f"{project}/{group}", "project": project, "type": "group"}
             self.create_list_item(group, self.groups, meta)
 
     def on_group_changed(self):
-        self.items.clear()
+        """
+        Executes when the user changes the group selection.
+        Clears all dependent widgets and, based on the newly selected group,
+        populates the items QListWidget.
+        """
         self.main_usd.clear()
+        self.tasks.clear()
+        self.items.clear()
         project = self.selected_project()
         group = self.selected_group()
-        if not group:
+        if not group or not project:
             return
-        try:
-            pr_items = self.pr_index_read[project]["groups"][group]["items"]
-            pr_items = dict(sorted(pr_items.items()))
-            for pr_item, meta in pr_items.items():
-                meta = {"preview_path": f"{project}/{group}/{pr_item}", "project": project, "type": "item"}
-                self.create_list_item(pr_item, self.items, meta)
-        except KeyError:
-            logging.error(f"No items found for project: {project}, group: {group}")
+
+        data_keys = [project, "groups", group, "items"]
+
+        pr_items = self.get_nested_data(self.pr_index_read, data_keys)
+        if not pr_items:
+            logging.warning(
+                f"No 'items' data found in the index for project: '{project}', group: '{group}'. Skipping population.")
+            return
+        for pr_item, meta in pr_items.items():
+            meta = {"preview_path": f"{project}/{group}/{pr_item}", "project": project, "type": "item"}
+            self.create_list_item(pr_item, self.items, meta)
 
     def on_pr_item_changed(self):
-        self.tasks.clear()
+        """
+        Executes when the user changes the item selection.
+        Clears all dependent widgets and, based on the newly selected item,
+        populates the tasks and main_usd QListWidgets.
+        Tasks and Main USD are populated at the same time because Main USD versioning
+        is handled on a per-item basis and combines all the latest task edits.
+        """
         self.main_usd.clear()
+        self.tasks.clear()
         project = self.selected_project()
         group = self.selected_group()
         pr_item = self.selected_item()
-
-        if not pr_item:
+        if not pr_item or not group or not project:
             return
-        try:
-            pr_tasks = self.pr_index_read[project]["groups"][group]["items"][pr_item]["tasks"]
-            pr_tasks = dict(sorted(pr_tasks.items()))
+
+        data_keys = [project, "groups", group, "items", pr_item, "tasks"]
+        pr_tasks = self.get_nested_data(self.pr_index_read, data_keys)
+        if pr_tasks:
             for pr_task, meta in pr_tasks.items():
                 meta = {"preview_path": f"{project}/{group}/{pr_item}/{pr_task}",
                         "project": project, "type": "task"}
                 self.create_list_item(pr_task, self.tasks, meta)
+        else:
+            logging.warning(
+                f"No 'tasks' data found in the index for project: '{project}', group: '{group}', "
+                f"item: '{pr_item}'. Skipping population.")
 
-            show_data = os.path.join(self.pr_projects_path, project, "show_data/published_data.json")
+        show_data = os.path.join(self.pr_projects_path, project, "show_data/published_data.json")
 
-            published_data = self.read_published_data(show_data)
-            # TODO continue re doing error handling
-            try:
-                data_key = f"{group}_{pr_item}"
-                for published_tag in published_data.keys():
+        published_data = self.read_published_data(show_data)
 
-                    if data_key not in published_tag:
-                        logging.info(f"No published data found for {data_key}. Skipping to next item.")
-                        continue
-                    for version in published_data[data_key].keys():
-                        ver_preview_name = version.split("/")[-1]
+        if not published_data:
+            logging.warning(f"Failed to read published data file for project: '{project}'. Skipping version load.")
+            return
 
-                        meta = {"preview_path": version,
-                                "project": project, "type": "main_usd"}
-                        self.create_list_item(ver_preview_name, self.main_usd, meta)
-            except FileNotFoundError:
-                logging.error(f"No published data found for {project}, group: {group}, item: {pr_item}")
-        except KeyError:
-            logging.error(f"No tasks found for project: {project}, group: {group}, item: {pr_item}")
+        data_key = f"{group}_{pr_item}"
+        if not data_key in published_data.keys():
+            logging.warning(f"No published versions found for key '{group}_{pr_item}' in project data.")
+            return
+
+        for version in published_data[data_key].keys():
+            ver_preview_name = version.split("/")[-1]
+
+            meta = {"preview_path": version,
+                    "project": project, "type": "main_usd"}
+            self.create_list_item(ver_preview_name, self.main_usd, meta)
 
     def read_published_data(self, show_data):
+        """
+        Reads project published data file
+        """
         try:
             with open(show_data, "r") as data_read:
                 published_data = json.load(data_read)
@@ -280,11 +312,11 @@ class TraceResetUI(QtWidgets.QMainWindow):
             logging.error(f"Show data file \n{self.pr_projects_path} is not found")
             return None
 
-    # Project data modification:
+    # PROJECT FOLDERS AND DATA MODIFICATION ---------------------------------
     def open_mark_to_del_menu(self, widget, position):
         """
-                Opens the right-click context menu for the selected item.
-                """
+        Opens the right-click context menu for the selected item.
+        """
         item = widget.itemAt(position)
         menu = QtWidgets.QMenu(self)
 
@@ -295,17 +327,21 @@ class TraceResetUI(QtWidgets.QMainWindow):
         menu.exec(widget.viewport().mapToGlobal(position))
 
     def add_to_delete_list(self, orig_item):
-
+        """
+        Stages an item for deletion, creating a copy of the item in the marked_to_delete list.
+        """
         metadata = orig_item.data(QtCore.Qt.UserRole)
 
         preview_path = metadata["preview_path"]
 
         item = QtWidgets.QListWidgetItem(preview_path)
-        # We store the reference to the original item in QtCore.Qt.UserRole + 1
         item.setData(QtCore.Qt.UserRole + 1, metadata)
         self.marked_to_delete.addItem(item)
 
     def open_restore_menu(self, position):
+        """
+        Opens the right-click context menu for the selected item to restore the item from the marked to delete list
+        """
         item = self.marked_to_delete.itemAt(position)
         menu = QtWidgets.QMenu(self)
 
@@ -320,15 +356,23 @@ class TraceResetUI(QtWidgets.QMainWindow):
 
     def _restore_selection(self, parent_widget, prev_selection):
         item_count = parent_widget.count()
+        if not item_count:
+            return
         if item_count > 0:
             for idx in range(item_count):
                 item = parent_widget.item(idx)
                 if item.text() == prev_selection:
                     parent_widget.setCurrentItem(item)
+                    break
                 else:
                     parent_widget.setCurrentRow(0)
 
     def clean_up_ui(self):
+        """
+        Executed after all data modifications (folders on disk, project_index, and show_data) are complete.
+        Saves the current project, group, and item selections in temporary variables and clears all QListWidgets.
+        Runs a new query on projects using the latest updated data, and then restores the previous selection.
+        """
         self.marked_to_delete.clear()
 
         _cur_pr = self.selected_project()
@@ -348,13 +392,16 @@ class TraceResetUI(QtWidgets.QMainWindow):
         self._restore_selection(self.groups, _cur_gr)
         self._restore_selection(self.items, _cur_itm)
 
-        QtWidgets.QMessageBox.warning(
+        QtWidgets.QMessageBox.information(
             self,
             "Information",
             f"Selected items successfully removed"
         )
 
     def on_del_exec(self):
+        """
+        Called when delete button is executed. Modifies data on disk, project index
+        """
         items_to_process = [self.marked_to_delete.item(i) for i in range(self.marked_to_delete.count())]
 
         for item in items_to_process:
@@ -366,7 +413,7 @@ class TraceResetUI(QtWidgets.QMainWindow):
                     show_data = os.path.join(self.pr_projects_path, marked_item_meta["project"],
                                              "show_data/published_data.json")
                     published_data = self.read_published_data(show_data)
-                    self.update_published_data(item.text(), published_data)
+                    self.remove_meta_key_recursive(published_data, item.text())
                     with open(show_data, "w") as write_file:
                         json.dump(published_data, write_file, indent=4)
 
@@ -382,6 +429,9 @@ class TraceResetUI(QtWidgets.QMainWindow):
             json.dump(self.pr_index_read, write_file, indent=4)
 
     def remove_filesystem_item(self, path_to_remove):
+        """
+        Removes files from disk
+        """
         if not path_to_remove.exists():
             logging.error(f"File not found: {path_to_remove}")
             raise FileNotFoundError(f"File not found: {path_to_remove}")
@@ -400,9 +450,6 @@ class TraceResetUI(QtWidgets.QMainWindow):
 
         except PermissionError as e:
             logging.error(f"Permission denied while removing {path_to_remove}\n{e}")
-
-    def update_published_data(self, data_key, published_data):
-        self.remove_meta_key_recursive(published_data, data_key)
 
     def remove_meta_key_recursive(self, meta, key_to_delete):
         """
