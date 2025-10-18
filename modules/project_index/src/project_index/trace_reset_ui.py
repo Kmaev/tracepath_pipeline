@@ -53,12 +53,16 @@ class TraceResetUI(QtWidgets.QMainWindow):
         self.display_widget = QtWidgets.QWidget()
         self.display_widget.setMinimumHeight(200)
         self.splitter.addWidget(self.display_widget)
-        self.display_layout = QtWidgets.QHBoxLayout()
+        self.display_layout = QtWidgets.QVBoxLayout()
         self.display_widget.setLayout(self.display_layout)
+
+        # Project elements layout
+        self.project_elements_layout = QtWidgets.QHBoxLayout()
+        self.display_layout.addLayout(self.project_elements_layout)
 
         # Project List
         self.projects_layout = QtWidgets.QVBoxLayout()
-        self.display_layout.addLayout(self.projects_layout)
+        self.project_elements_layout.addLayout(self.projects_layout)
 
         self.projects_label = QtWidgets.QLabel("Projects")
         self.projects_layout.addWidget(self.projects_label)
@@ -67,10 +71,11 @@ class TraceResetUI(QtWidgets.QMainWindow):
         self.projects_layout.addWidget(self.projects)
 
         self.projects.setSelectionMode(QtWidgets.QAbstractItemView.SingleSelection)
+        self.projects.setMinimumHeight(300)
 
         # Group List
         self.groups_layout = QtWidgets.QVBoxLayout()
-        self.display_layout.addLayout(self.groups_layout)
+        self.project_elements_layout.addLayout(self.groups_layout)
 
         self.groups_label = QtWidgets.QLabel("Groups")
         self.groups_layout.addWidget(self.groups_label)
@@ -80,7 +85,7 @@ class TraceResetUI(QtWidgets.QMainWindow):
 
         # Item List
         self.items_layout = QtWidgets.QVBoxLayout()
-        self.display_layout.addLayout(self.items_layout)
+        self.project_elements_layout.addLayout(self.items_layout)
 
         self.items_label = QtWidgets.QLabel("Items")
         self.items_layout.addWidget(self.items_label)
@@ -90,7 +95,7 @@ class TraceResetUI(QtWidgets.QMainWindow):
 
         # Task List
         self.tasks_layout = QtWidgets.QVBoxLayout()
-        self.display_layout.addLayout(self.tasks_layout)
+        self.project_elements_layout.addLayout(self.tasks_layout)
 
         self.tasks_label = QtWidgets.QLabel("Tasks")
         self.tasks_layout.addWidget(self.tasks_label)
@@ -98,9 +103,13 @@ class TraceResetUI(QtWidgets.QMainWindow):
         self.tasks = QtWidgets.QListWidget(self)
         self.tasks_layout.addWidget(self.tasks)
 
+        # Item Versions Data  layout
+        self.versions_data = QtWidgets.QVBoxLayout()
+        self.display_layout.addLayout(self.versions_data)
+
         # Main USD List
         self.main_usd_layout = QtWidgets.QVBoxLayout()
-        self.display_layout.addLayout(self.main_usd_layout)
+        self.versions_data.addLayout(self.main_usd_layout)
 
         self.main_usd_label = QtWidgets.QLabel("Main Versions")
         self.main_usd_layout.addWidget(self.main_usd_label)
@@ -108,9 +117,19 @@ class TraceResetUI(QtWidgets.QMainWindow):
         self.main_usd = QtWidgets.QListWidget(self)
         self.main_usd_layout.addWidget(self.main_usd)
 
+        # Main USD data
+        self.usd_data_layout = QtWidgets.QVBoxLayout()
+        self.versions_data.addLayout(self.usd_data_layout)
+
+        self.usd_data_label = QtWidgets.QLabel("Detail View")
+        self.main_usd_layout.addWidget(self.usd_data_label)
+
+        self.usd_data = QtWidgets.QTextEdit()
+        self.main_usd_layout.addWidget(self.usd_data)
+
         # DELETE WIDGETS ---------------------------------
         self.delete_widget = QtWidgets.QWidget()
-        self.delete_widget.setMinimumHeight(200)
+        self.delete_widget.setMinimumHeight(150)
         self.splitter.addWidget(self.delete_widget)
 
         self.delete_layout = QtWidgets.QVBoxLayout()
@@ -128,7 +147,7 @@ class TraceResetUI(QtWidgets.QMainWindow):
         self.delete_layout.addWidget(self.delete_btn)
 
         # Resize Splitter
-        self.splitter.setSizes([int(self.splitter.height() * 0.6), int(self.splitter.height() * 0.4)])
+        self.splitter.setSizes([int(self.splitter.height() * 0.8), int(self.splitter.height() * 0.2)])
 
         # Load and set style
         style = ""
@@ -252,6 +271,18 @@ class TraceResetUI(QtWidgets.QMainWindow):
             meta = {"preview_path": f"{project}/{group}/{pr_item}", "project": project, "type": "item"}
             self.create_list_item(pr_item, self.items, meta)
 
+    def read_published_data(self, show_data):
+        """
+        Reads project published data file
+        """
+        try:
+            with open(show_data, "r") as data_read:
+                published_data = json.load(data_read)
+            return published_data
+        except FileNotFoundError:
+            logging.error(f"Show data file \n{self.pr_projects_path} is not found")
+            return None
+
     def on_pr_item_changed(self):
         """
         Executes when the user changes the item selection.
@@ -300,17 +331,9 @@ class TraceResetUI(QtWidgets.QMainWindow):
                     "project": project, "type": "main_usd"}
             self.create_list_item(ver_preview_name, self.main_usd, meta)
 
-    def read_published_data(self, show_data):
-        """
-        Reads project published data file
-        """
-        try:
-            with open(show_data, "r") as data_read:
-                published_data = json.load(data_read)
-            return published_data
-        except FileNotFoundError:
-            logging.error(f"Show data file \n{self.pr_projects_path} is not found")
-            return None
+    # TODO Add main usd version data display, should output the content of selected main usd file
+    def on_main_usd_version_changed(self):
+        pass
 
     # PROJECT FOLDERS AND DATA MODIFICATION ---------------------------------
     def open_mark_to_del_menu(self, widget, position):
