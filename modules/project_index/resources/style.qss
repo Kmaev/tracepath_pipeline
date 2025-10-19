@@ -192,6 +192,9 @@ QTreeView QLineEdit {
 QLineEdit::item::pressed{
     color: red;
 }
+#data_info {
+    color: #FF7A1A;
+}
 
 
 

@@ -6,6 +6,8 @@ import sys
 from functools import partial, reduce
 from pathlib import Path
 
+from pxr import UsdUtils, Usd
+
 logging.basicConfig(level=logging.INFO, format="%(levelname)s: %(message)s")
 
 try:
@@ -124,7 +126,13 @@ class TraceResetUI(QtWidgets.QMainWindow):
         self.usd_data_label = QtWidgets.QLabel("Detail View")
         self.main_usd_layout.addWidget(self.usd_data_label)
 
-        self.usd_data = QtWidgets.QTextEdit()
+        # Main USD data info message:
+        self.data_info = QtWidgets.QLabel("Warning: Data in the Detail View is for informational purposes only."
+                                          " You cannot edit the main USD file's component layers.")
+        self.data_info.setObjectName("data_info")
+        self.main_usd_layout.addWidget(self.data_info)
+
+        self.usd_data = QtWidgets.QListWidget()
         self.main_usd_layout.addWidget(self.usd_data)
 
         # DELETE WIDGETS ---------------------------------
@@ -168,6 +176,7 @@ class TraceResetUI(QtWidgets.QMainWindow):
         self.projects.itemSelectionChanged.connect(self.on_project_changed)
         self.groups.itemSelectionChanged.connect(self.on_group_changed)
         self.items.itemSelectionChanged.connect(self.on_pr_item_changed)
+        self.main_usd.itemSelectionChanged.connect(self.on_main_usd_version_changed)
 
         for widget in (self.projects, self.groups, self.items, self.tasks, self.main_usd):
             widget.setContextMenuPolicy(QtCore.Qt.CustomContextMenu)
@@ -197,14 +206,15 @@ class TraceResetUI(QtWidgets.QMainWindow):
     def selected_task(self):
         return self.get_selection(self.tasks)
 
-    def create_list_item(self, item_name: str, parent_widget: object, metadata: dict):
+    def create_list_item(self, item_name: str, parent_widget: object, metadata=None):
         """
         Creates a QListWidgetItem, embeds metadata, and adds it to the parent widget.
-        The function modifies the provided metadata by adding the 'item_name'.
+        The function modifies the provided metadata by adding the 'item_name' if metadat is not None.
         """
         item = QtWidgets.QListWidgetItem(item_name)
-        metadata["item_name"] = item_name
-        item.setData(QtCore.Qt.UserRole, metadata)
+        if metadata:
+            metadata["item_name"] = item_name
+            item.setData(QtCore.Qt.UserRole, metadata)
         parent_widget.addItem(item)
 
     def populate_project_list(self):
@@ -332,8 +342,24 @@ class TraceResetUI(QtWidgets.QMainWindow):
             self.create_list_item(ver_preview_name, self.main_usd, meta)
 
     # TODO Add main usd version data display, should output the content of selected main usd file
+
     def on_main_usd_version_changed(self):
-        pass
+        """
+        Populates the detail list widget with the composition layers of the selected main USD file.
+        """
+        self.usd_data.clear()
+        selected_main = self.main_usd.selectedItems()[0]
+        usd_file_path = selected_main.data(QtCore.Qt.UserRole)["preview_path"]
+        if not os.path.isfile(usd_file_path):
+            logging.error(f"Published USD file '{usd_file_path}' was not found. Skipping loading process.")
+            return
+        stage = Usd.Stage.Open(usd_file_path)
+        usd_layer = stage.GetRootLayer()
+
+        layers, _, _ = UsdUtils.ComputeAllDependencies(usd_layer.identifier)
+        for layer in layers:
+            if layer.realPath != usd_file_path:
+                self.create_list_item(layer.realPath, self.usd_data)
 
     # PROJECT FOLDERS AND DATA MODIFICATION ---------------------------------
     def open_mark_to_del_menu(self, widget, position):
