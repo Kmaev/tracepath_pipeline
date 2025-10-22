@@ -17,15 +17,11 @@ except ImportError:
 
 
 # TODO:
-# 1. Change UI layout: The tasks list widget and main_usd list widget should be in a separate group widget
-# and appear one on top of the other, as both are populated when an item is selected in the items list widget.
-
-# 2. Add a right-click context menu to items in the main_usd list  widget to allow exploring the content of the USD file.
+# 1. Add a right-click context menu to items in the main_usd list  widget to allow exploring the content of the USD file.
 # Possible scenarios:
 # A. Add a text edit area to output the USD file content.
 # B. Add an 'Open in USD View' action for file inspection.
 # C. Implement both options (A and B).
-
 
 class TraceResetUI(QtWidgets.QMainWindow):
     def __init__(self, parent=None):
@@ -214,6 +210,7 @@ class TraceResetUI(QtWidgets.QMainWindow):
         item = QtWidgets.QListWidgetItem(item_name)
         if metadata:
             metadata["item_name"] = item_name
+            metadata["parent"] = parent_widget
             item.setData(QtCore.Qt.UserRole, metadata)
         parent_widget.addItem(item)
 
@@ -341,8 +338,6 @@ class TraceResetUI(QtWidgets.QMainWindow):
                     "project": project, "type": "main_usd"}
             self.create_list_item(ver_preview_name, self.main_usd, meta)
 
-    # TODO Add main usd version data display, should output the content of selected main usd file
-
     def on_main_usd_version_changed(self):
         """
         Populates the detail list widget with the composition layers of the selected main USD file.
@@ -380,12 +375,15 @@ class TraceResetUI(QtWidgets.QMainWindow):
         Stages an item for deletion, creating a copy of the item in the marked_to_delete list.
         """
         metadata = orig_item.data(QtCore.Qt.UserRole)
+        orig_item.setHidden(True)
 
         preview_path = metadata["preview_path"]
+        parent_widget = metadata["parent"]
 
         item = QtWidgets.QListWidgetItem(preview_path)
         item.setData(QtCore.Qt.UserRole + 1, metadata)
         self.marked_to_delete.addItem(item)
+        parent_widget.clearSelection()
 
     def open_restore_menu(self, position):
         """
@@ -400,21 +398,30 @@ class TraceResetUI(QtWidgets.QMainWindow):
 
         menu.exec(self.marked_to_delete.viewport().mapToGlobal(position))
 
+    def _find_item_by_name(self, item_name: str, parent_widget) -> QtWidgets.QListWidgetItem | None:
+        """Return the QListWidgetItem matching the given text, or None if not found."""
+        for i in range(parent_widget.count()):
+            item = parent_widget.item(i)
+            if item and item.text() == item_name:
+                return item
+        return None
+
     def restore_item_from_del_list(self, item):
         self.marked_to_delete.takeItem(self.marked_to_delete.row(item))
+        item_name = item.data(QtCore.Qt.UserRole + 1)["item_name"]
+        parent_widget = item.data(QtCore.Qt.UserRole + 1)["parent"]
+        found_item = self._find_item_by_name(item_name, parent_widget)
+        if found_item.isHidden():
+            found_item.setHidden(False)
+            parent_widget.clearSelection()
+            parent_widget.setCurrentItem(found_item)
 
-    def _restore_selection(self, parent_widget, prev_selection):
-        item_count = parent_widget.count()
-        if not item_count:
-            return
-        if item_count > 0:
-            for idx in range(item_count):
-                item = parent_widget.item(idx)
-                if item.text() == prev_selection:
-                    parent_widget.setCurrentItem(item)
-                    break
-                else:
-                    parent_widget.setCurrentRow(0)
+    def _restore_selection(self, prev_selection, parent_widget):
+        found_item = self._find_item_by_name(prev_selection, parent_widget)
+        if found_item:
+            parent_widget.setCurrentItem(found_item)
+        else:
+            parent_widget.setCurrentRow(0)
 
     def clean_up_ui(self):
         """
@@ -422,6 +429,13 @@ class TraceResetUI(QtWidgets.QMainWindow):
         Saves the current project, group, and item selections in temporary variables and clears all QListWidgets.
         Runs a new query on projects using the latest updated data, and then restores the previous selection.
         """
+        if self.marked_to_delete.count() == 0:
+            QtWidgets.QMessageBox.information(
+                self,
+                "Information",
+                f"No staged items found — skipping deletion."
+            )
+            return
         self.marked_to_delete.clear()
 
         _cur_pr = self.selected_project()
@@ -437,9 +451,9 @@ class TraceResetUI(QtWidgets.QMainWindow):
 
         self.populate_project_list()
 
-        self._restore_selection(self.projects, _cur_pr)
-        self._restore_selection(self.groups, _cur_gr)
-        self._restore_selection(self.items, _cur_itm)
+        self._restore_selection(_cur_pr, self.projects)
+        self._restore_selection(_cur_gr, self.groups)
+        self._restore_selection(_cur_itm, self.items)
 
         QtWidgets.QMessageBox.information(
             self,
@@ -452,7 +466,9 @@ class TraceResetUI(QtWidgets.QMainWindow):
         Called when delete button is executed. Modifies data on disk, project index
         """
         items_to_process = [self.marked_to_delete.item(i) for i in range(self.marked_to_delete.count())]
-
+        if not items_to_process:
+            logging.info("No staged items found — skipping deletion.")
+            return
         for item in items_to_process:
             marked_item_meta = item.data(QtCore.Qt.UserRole + 1)
 
@@ -469,7 +485,6 @@ class TraceResetUI(QtWidgets.QMainWindow):
                 self.remove_filesystem_item(path_to_remove)
 
                 self.remove_meta_key_recursive(self.pr_index_read, marked_item_meta["item_name"])
-
 
             except Exception as e:
                 logging.error(f"Failed to delete {path_to_remove} or update index: {e}")
