@@ -2,6 +2,7 @@ import json
 import logging
 import os
 import shutil
+import subprocess
 import sys
 from functools import partial, reduce
 from pathlib import Path
@@ -174,9 +175,12 @@ class TraceResetUI(QtWidgets.QMainWindow):
         self.items.itemSelectionChanged.connect(self.on_pr_item_changed)
         self.main_usd.itemSelectionChanged.connect(self.on_main_usd_version_changed)
 
-        for widget in (self.projects, self.groups, self.items, self.tasks, self.main_usd):
+        for widget in (self.projects, self.groups, self.items, self.tasks):
             widget.setContextMenuPolicy(QtCore.Qt.CustomContextMenu)
             widget.customContextMenuRequested.connect(partial(self.open_mark_to_del_menu, widget))
+
+        self.main_usd.setContextMenuPolicy(QtCore.Qt.CustomContextMenu)
+        self.main_usd.customContextMenuRequested.connect(self.open_inspect_usd_file_menu)
 
         self.marked_to_delete.setContextMenuPolicy(QtCore.Qt.CustomContextMenu)
         self.marked_to_delete.customContextMenuRequested.connect(self.open_restore_menu)
@@ -365,7 +369,7 @@ class TraceResetUI(QtWidgets.QMainWindow):
                 self.create_list_item(layer.realPath, self.usd_data)
 
     # PROJECT FOLDERS AND DATA MODIFICATION ---------------------------------
-    
+
     def open_context_menu(self, widget: QtWidgets.QListWidget, position: QtCore.QPoint, functions: dict):
         """
         Opens a context menu for the selected item.
@@ -424,6 +428,10 @@ class TraceResetUI(QtWidgets.QMainWindow):
         return None
 
     def restore_item_from_del_list(self, item: QtWidgets.QListWidgetItem):
+        """
+        Removes an item from the deletion list and restores its visibility
+        in the original project context QListWidget.
+        """
         self.marked_to_delete.takeItem(self.marked_to_delete.row(item))
         item_name = item.data(QtCore.Qt.UserRole + 1)["item_name"]
         parent_widget = item.data(QtCore.Qt.UserRole + 1)["parent"]
@@ -434,11 +442,30 @@ class TraceResetUI(QtWidgets.QMainWindow):
             parent_widget.setCurrentItem(found_item)
 
     def _restore_selection(self, prev_selection: str, parent_widget: QtWidgets.QListWidget):
+        """
+        Restores the previously selected QListWidgetItems after a cleanup and folder deletion
+        operation, once the tool has been reset.
+        """
         found_item = self._find_item_by_name(prev_selection, parent_widget)
         if found_item:
             parent_widget.setCurrentItem(found_item)
         else:
             parent_widget.setCurrentRow(0)
+
+    def open_inspect_usd_file_menu(self, position: QtCore.QPoint):
+        """
+        Opens a menu to restore the item from the deletion list, connected to Marked to Delete QListWidget
+        """
+        functions = {"Open in USD View": self.open_in_usd_view, "Mark to delete": self.add_to_delete_list}
+        self.open_context_menu(self.main_usd, position, functions)
+
+    def open_in_usd_view(self, item: QtWidgets.QListWidgetItem):
+        """
+        Opens usd view to inspect a selected main usd file
+        """
+        usd_file_path = item.data(QtCore.Qt.UserRole)["preview_path"]
+        cmd = ["usdview", usd_file_path]
+        subprocess.Popen(cmd)
 
     def clean_up_ui(self):
         """
