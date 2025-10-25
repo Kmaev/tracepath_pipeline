@@ -2,6 +2,7 @@ name = "usd"
 version = "0.1.0"
 build_command = "python {root}/build.py {install}"
 
+requires = ["PyOpenGL"]
 
 def commands():
     import os
