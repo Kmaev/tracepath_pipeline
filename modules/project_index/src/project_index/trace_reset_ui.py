@@ -17,18 +17,13 @@ except ImportError:
     from PySide2 import QtCore, QtGui, QtWidgets
 
 
-# TODO:
-# 1. Add a right-click context menu to items in the main_usd list  widget to allow exploring the content of the USD file.
-# Possible scenarios:
-
-# 2. Add an 'Open in USD View' action for file inspection.
-
-
 class TraceResetUI(QtWidgets.QMainWindow):
     def __init__(self, parent=None):
         super(TraceResetUI, self).__init__(parent=parent)
         style_folder = os.environ.get("STYLE_PROJECT_INDEX")
         framework = os.getenv("PR_TRACEPATH_FRAMEWORK")
+        if not framework:
+            raise EnvironmentError("PR_TRACEPATH_FRAMEWORK is not set")
         self.project_index_path = os.path.join(framework, "config/trace_project_index.json")
         with open(self.project_index_path, "r") as read_file:
             self.pr_index_read = json.load(read_file)
@@ -37,6 +32,8 @@ class TraceResetUI(QtWidgets.QMainWindow):
         self.setWindowTitle('Trace Reset v0.1.6')
 
         self.pr_projects_path = os.environ.get("PR_PROJECTS_PATH")
+        if not self.pr_projects_path:
+            raise EnvironmentError("PR_PROJECTS_PATH is not set")
 
         self.central_widget = QtWidgets.QWidget(self)
         self.central_layout = QtWidgets.QVBoxLayout(self.central_widget)
@@ -117,9 +114,6 @@ class TraceResetUI(QtWidgets.QMainWindow):
         self.main_usd_layout.addWidget(self.main_usd)
 
         # Main USD data
-        self.usd_data_layout = QtWidgets.QVBoxLayout()
-        self.versions_data.addLayout(self.usd_data_layout)
-
         self.usd_data_label = QtWidgets.QLabel("Detail View")
         self.main_usd_layout.addWidget(self.usd_data_label)
 
@@ -186,10 +180,8 @@ class TraceResetUI(QtWidgets.QMainWindow):
         self.marked_to_delete.customContextMenuRequested.connect(self.open_restore_menu)
 
         self.delete_btn.clicked.connect(self.on_del_exec)
-        self.delete_btn.clicked.connect(self.clean_up_ui)
 
         # PROJECT COMPONENTS BROWSING ---------------------------------
-
     def get_selection(self, widget) -> str | None:
         """
         Returns the name of the selected QtListWidgetItem or None
@@ -213,7 +205,7 @@ class TraceResetUI(QtWidgets.QMainWindow):
         """
         Creates a QListWidgetItem, embeds metadata, and adds it to the parent widget.
         The function modifies the provided metadata by adding the 'item_name' and
-        'parent' (parent widget) if metadat is not None.
+        'parent' (parent widget) if metadata is not None.
         """
         item = QtWidgets.QListWidgetItem(item_name)
         if metadata:
@@ -299,7 +291,7 @@ class TraceResetUI(QtWidgets.QMainWindow):
                 published_data = json.load(data_read)
             return published_data
         except FileNotFoundError:
-            logging.error(f"Show data file \n{self.pr_projects_path} is not found")
+            logging.error(f"Show data file \n{show_data} is not found")
             return None
 
     def on_pr_item_changed(self):
@@ -355,7 +347,12 @@ class TraceResetUI(QtWidgets.QMainWindow):
         Populates the detail list widget with the composition layers of the selected main USD file.
         """
         self.usd_data.clear()
-        selected_main = self.main_usd.selectedItems()[0]
+        selected = self.main_usd.selectedItems()
+        if not selected:
+            return
+        selected_main = selected[0]
+        if not selected_main:
+            return
         usd_file_path = selected_main.data(QtCore.Qt.UserRole)["preview_path"]
         if not os.path.isfile(usd_file_path):
             logging.error(f"Published USD file '{usd_file_path}' was not found. Skipping loading process.")
@@ -365,11 +362,11 @@ class TraceResetUI(QtWidgets.QMainWindow):
 
         layers, _, _ = UsdUtils.ComputeAllDependencies(usd_layer.identifier)
         for layer in layers:
-            if layer.realPath != usd_file_path:
+            real_path = getattr(layer, "realPath", None)
+            if real_path and real_path != usd_file_path:
                 self.create_list_item(layer.realPath, self.usd_data)
 
     # PROJECT FOLDERS AND DATA MODIFICATION ---------------------------------
-
     def open_context_menu(self, widget: QtWidgets.QListWidget, position: QtCore.QPoint, functions: dict):
         """
         Opens a context menu for the selected item.
@@ -401,8 +398,10 @@ class TraceResetUI(QtWidgets.QMainWindow):
         Stages an item for deletion, creating a copy of the item in the marked_to_delete list.
         """
         metadata = orig_item.data(QtCore.Qt.UserRole)
+        if not metadata or "preview_path" not in metadata or "parent" not in metadata:
+            logging.warning("No/invalid metadata; cannot stage for deletion.")
+            return
         orig_item.setHidden(True)
-
         preview_path = metadata["preview_path"]
         parent_widget = metadata["parent"]
 
@@ -436,6 +435,9 @@ class TraceResetUI(QtWidgets.QMainWindow):
         item_name = item.data(QtCore.Qt.UserRole + 1)["item_name"]
         parent_widget = item.data(QtCore.Qt.UserRole + 1)["parent"]
         found_item = self._find_item_by_name(item_name, parent_widget)
+        if not found_item:
+            logging.warning(f"Could not find '{item_name}' in parent to restore")
+            return
         if found_item.isHidden():
             found_item.setHidden(False)
             parent_widget.clearSelection()
@@ -465,7 +467,10 @@ class TraceResetUI(QtWidgets.QMainWindow):
         """
         usd_file_path = item.data(QtCore.Qt.UserRole)["preview_path"]
         cmd = ["usdview", usd_file_path]
-        subprocess.Popen(cmd)
+        try:
+            subprocess.Popen(cmd)
+        except Exception as e:
+            QtWidgets.QMessageBox.critical(self, "Launch failed", f"Failed to open usdview:\n{e}")
 
     def clean_up_ui(self):
         """
@@ -499,12 +504,6 @@ class TraceResetUI(QtWidgets.QMainWindow):
         self._restore_selection(_cur_gr, self.groups)
         self._restore_selection(_cur_itm, self.items)
 
-        QtWidgets.QMessageBox.information(
-            self,
-            "Information",
-            f"Selected items successfully removed"
-        )
-
     def on_del_exec(self):
         """
         Called when delete button is executed. Modifies data on disk, project index
@@ -513,6 +512,12 @@ class TraceResetUI(QtWidgets.QMainWindow):
         if not items_to_process:
             logging.info("No staged items found — skipping deletion.")
             return
+        if QtWidgets.QMessageBox.question(
+                self, "Confirm deletion", "Permanently delete staged items?",
+                QtWidgets.QMessageBox.Yes | QtWidgets.QMessageBox.No
+        ) != QtWidgets.QMessageBox.Yes:
+            return
+        removed, failed = [], []
         for item in items_to_process:
             marked_item_meta = item.data(QtCore.Qt.UserRole + 1)
 
@@ -521,7 +526,7 @@ class TraceResetUI(QtWidgets.QMainWindow):
                 if marked_item_meta["type"] == "main_usd":
                     show_data = os.path.join(self.pr_projects_path, marked_item_meta["project"],
                                              "show_data/published_data.json")
-                    published_data = self.read_published_data(show_data)
+                    published_data = self.read_published_data(show_data) or {}
                     self.remove_meta_key_recursive(published_data, item.text())
                     with open(show_data, "w") as write_file:
                         json.dump(published_data, write_file, indent=4)
@@ -529,12 +534,29 @@ class TraceResetUI(QtWidgets.QMainWindow):
                 self.remove_filesystem_item(path_to_remove)
 
                 self.remove_meta_key_recursive(self.pr_index_read, marked_item_meta["item_name"])
-
+                removed.append(str(path_to_remove))
             except Exception as e:
+                failed.append(str(path_to_remove))
                 logging.error(f"Failed to delete {path_to_remove} or update index: {e}")
                 continue  # Move to the next item
         with open(self.project_index_path, "w") as write_file:
             json.dump(self.pr_index_read, write_file, indent=4)
+
+        self.clean_up_ui()
+
+        msg = []
+        if removed:
+            msg.append(f"Removed:\n- " + "\n- ".join(removed))
+            logging.info(f"Items to remove: {msg}")
+        if failed:
+            msg.append(f"Failed:\n- " + "\n- ".join(failed))
+        message = f"\n\n".join(msg) if msg else "No elements were modified."
+        QtWidgets.QMessageBox.information(
+            self,
+            "Deletion results",
+            message
+        )
+        logging.info(f"All message: {msg}")
 
     def remove_filesystem_item(self, path_to_remove: Path):
         """
