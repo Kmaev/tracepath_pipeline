@@ -1,3 +1,4 @@
+import importlib
 import json
 import logging
 import os
@@ -7,7 +8,9 @@ import sys
 from functools import partial, reduce
 from pathlib import Path
 
-from pxr import UsdUtils, Usd
+from project_index import _utils
+
+importlib.reload(_utils)
 
 logging.basicConfig(level=logging.INFO, format="%(levelname)s: %(message)s")
 
@@ -28,7 +31,7 @@ class TraceResetUI(QtWidgets.QMainWindow):
         with open(self.project_index_path, "r") as read_file:
             self.pr_index_read = json.load(read_file)
 
-        self.resize(1400, 900)
+        self.resize(1500, 900)
         self.setWindowTitle('Trace Reset v0.1.6')
 
         self.pr_projects_path = os.environ.get("PR_PROJECTS_PATH")
@@ -182,6 +185,7 @@ class TraceResetUI(QtWidgets.QMainWindow):
         self.delete_btn.clicked.connect(self.on_del_exec)
 
         # PROJECT COMPONENTS BROWSING ---------------------------------
+
     def get_selection(self, widget) -> str | None:
         """
         Returns the name of the selected QtListWidgetItem or None
@@ -357,14 +361,10 @@ class TraceResetUI(QtWidgets.QMainWindow):
         if not os.path.isfile(usd_file_path):
             logging.error(f"Published USD file '{usd_file_path}' was not found. Skipping loading process.")
             return
-        stage = Usd.Stage.Open(usd_file_path)
-        usd_layer = stage.GetRootLayer()
 
-        layers, _, _ = UsdUtils.ComputeAllDependencies(usd_layer.identifier)
-        for layer in layers:
-            real_path = getattr(layer, "realPath", None)
-            if real_path and real_path != usd_file_path:
-                self.create_list_item(layer.realPath, self.usd_data)
+        preview_layers = _utils.get_usd_file_dependencies_preview(usd_file_path)
+        for layer_name in preview_layers:
+            self.create_list_item(layer_name, self.usd_data)
 
     # PROJECT FOLDERS AND DATA MODIFICATION ---------------------------------
     def open_context_menu(self, widget: QtWidgets.QListWidget, position: QtCore.QPoint, functions: dict):
