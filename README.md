@@ -25,6 +25,9 @@ It runs on [Rez](https://github.com/AcademySoftwareFoundation/rez) — an open-s
   - USD HDAs (e.g., save and load USD scenes for collaboration)
 - Prototype **publishing system** (JSON-based) with:
   - Automated versioning of USD files with **comment tracking**
+### Trace Reset
+- Tool to edit and manage assets, sequences, shots, tasks, and published USD files with a staging and deletion system.
+- Display detailed dependency views of USD files and quickly inspect them in USDView.
 
 ---
 
@@ -222,6 +225,13 @@ Handles time-sampled data and provide built-in stitching of per-frame USD files,
 **TracePath USD Write**– an HDA to write USD files with versioning and a publishing system, with the possibility to attach comments to published versions.
 
 <img width="747" height="555" alt="image" src="https://github.com/user-attachments/assets/da0c7360-7830-467e-aa5e-767de508b35d" />
+
+ ### Trace Reset
+ 
+Tool to edit and manage assets, sequences, shots, tasks, and published USD files with a staging and deletion system. 
+ Includes detailed dependency views for USD files and quick inspection in USDView.
+ 
+ <img width="1469" height="916" alt="image" src="https://github.com/user-attachments/assets/3336c6d9-c2af-4b81-a554-13f22291e91b" />
 
 ## Important Note!
 
