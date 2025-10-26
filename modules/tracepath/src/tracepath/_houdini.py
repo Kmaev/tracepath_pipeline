@@ -170,7 +170,10 @@ def apply_autoversion(node: hou.Node):
         if context.exists():
             latest_version = get_latest_version_number(str(context))
             if latest_version:
-                version = latest_version
+                version = latest_version + 1
+    else:
+        version = node.parm("version").eval()
+
     node.parm("version").set(version)
 
 
