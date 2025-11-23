@@ -104,7 +104,6 @@ class TraceProjectIndex(QtWidgets.QMainWindow):
         self.asset_repo_location.setPlaceholderText(
             "Local Asset Repository Path / Right-click a project item to set it as the repository location.")
         self.central_layout.addWidget(self.asset_repo_location)
-        # self.asset_repo_location.setReadOnly(True)
 
         # Tasks, DCC Edit and folder structure creation
         self.dcc_label = QtWidgets.QLabel("Software Folder Templates (space-separated)")
@@ -529,8 +528,7 @@ class TraceProjectIndex(QtWidgets.QMainWindow):
         if not input_name:
             QtWidgets.QMessageBox.critical(self, "Error", "Please enter a project name to create or update.")
             return
-        logging.info(f"Asset repo location __{self.asset_repo_location.text()}__")
-        logging.info(len(self.asset_repo_location.text()) == 0)
+
         if len(self.asset_repo_location.text()) == 0:
             reply = QtWidgets.QMessageBox.question(self, "Question", "No local asset repository specified.\n"
                                                                      "Proceed and use only the Global Asset Repository?")
@@ -638,6 +636,7 @@ class TraceProjectIndex(QtWidgets.QMainWindow):
         self.asset_repo_location.setText("")
         self.asset_repository = None
         self.edit_asset_repo.setChecked(False)
+        self.asset_repo_location.setHidden(True)
         self.added_task_subfolders_check.setChecked(False)
         self.undo_stack = []
         self._rename_cache = None
