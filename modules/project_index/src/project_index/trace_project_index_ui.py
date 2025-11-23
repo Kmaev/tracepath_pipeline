@@ -15,7 +15,7 @@ logging.basicConfig(level=logging.WARNING, format="%(levelname)s: %(message)s")
 try:
     from PySide6 import QtCore, QtGui, QtWidgets
 except ImportError:
-    from PySide2 import QtCore, QtGui, QtWidgets  # type: ignore
+    from PySide2 import QtCore, QtGui, QtWidgets
 
 try:
     from project_index import _usd
@@ -37,12 +37,15 @@ class TraceProjectIndex(QtWidgets.QMainWindow):
         self._rename_cache = None
         self.setWindowTitle('Trace Project Index v0.1.6')
         self.searching = False
+        self.asset_repository = None
 
         # Get env vars
         style_folder = os.environ.get("STYLE_PROJECT_INDEX")
         framework = os.getenv("PR_TRACEPATH_FRAMEWORK")
         self.project_index_path = os.path.join(framework, "config/trace_project_index.json")
         self.usd_template_path = os.path.join(framework, "config/usd_scene_template.json")
+        self.local_asset_lib = os.path.join(framework, "config/local_asset_lib_data.json")
+
         self.show_root = os.getenv("PR_PROJECTS_PATH")
 
         self.central_widget = QtWidgets.QWidget()
@@ -83,23 +86,40 @@ class TraceProjectIndex(QtWidgets.QMainWindow):
         self.tree_widget.setFocus()
         self.max_tree_depth = 3
 
+        self.create_project_line_edit = QtWidgets.QLineEdit()
+        self.create_project_line_edit.setPlaceholderText(
+            'Retype project name to confirm creation or update')
+        self.central_layout.addWidget(self.create_project_line_edit)
+
+        self.asset_repo_location_label = QtWidgets.QLabel("Local Asset Repository")
+        self.central_layout.addWidget(self.asset_repo_location_label)
+
+        self.edit_asset_repo = QtWidgets.QCheckBox("Edit Local Asset Repository Location")
+        self.edit_asset_repo.setChecked(False)
+        self.edit_asset_repo.setEnabled(False)
+        self.central_layout.addWidget(self.edit_asset_repo)
+
+        self.asset_repo_location = QtWidgets.QLineEdit()
+        self.asset_repo_location.setHidden(True)
+        self.asset_repo_location.setPlaceholderText(
+            "Local Asset Repository Path / Right-click a project item to set it as the repository location.")
+        self.central_layout.addWidget(self.asset_repo_location)
+        # self.asset_repo_location.setReadOnly(True)
+
         # Tasks, DCC Edit and folder structure creation
         self.dcc_label = QtWidgets.QLabel("Software Folder Templates (space-separated)")
         self.central_layout.addWidget(self.dcc_label)
 
         self.added_task_subfolders_check = QtWidgets.QCheckBox("Create software-based subfolders under each Task")
+        self.added_task_subfolders_check.setEnabled(False)
         self.central_layout.addWidget(self.added_task_subfolders_check)
 
         self.include_software = QtWidgets.QLineEdit()
         self.include_software.setEnabled(False)
+        self.include_software.setHidden(True)
         self.include_software.setPlaceholderText(
             'Type space-separated list of software to include e.g. houdini blender unreal')
         self.central_layout.addWidget(self.include_software)
-
-        self.create_project_line_edit = QtWidgets.QLineEdit()
-        self.create_project_line_edit.setPlaceholderText(
-            'Retype project name to confirm creation or update')
-        self.central_layout.addWidget(self.create_project_line_edit)
 
         self.create_folder_structure_btn = QtWidgets.QPushButton("Create Folder Structure")
         self.central_layout.addWidget(self.create_folder_structure_btn)
@@ -115,11 +135,10 @@ class TraceProjectIndex(QtWidgets.QMainWindow):
 
         if self.parent():
             self.parent().setStyleSheet(self.parent().styleSheet())
-        # ===============================================================================================================
+
         # Functions executed on init
         self.populate_tree()
 
-        # ===============================================================================================================
         # Widget signal connections
         self.search_line.textEdited.connect(self.run_search)
         self.search_line.textChanged.connect(self.reset_search_state)
@@ -135,6 +154,15 @@ class TraceProjectIndex(QtWidgets.QMainWindow):
         self.tree_widget.itemChanged.connect(self.validate_item_name)
 
         self.tree_widget.itemSelectionChanged.connect(self.cache_selected_item_name)
+
+        self.edit_asset_repo.stateChanged.connect(self.clear_local_asset_repo_path)
+        self.create_project_line_edit.textEdited.connect(self.set_local_asset_repo)
+        self.create_project_line_edit.textEdited.connect(
+            lambda text: self.edit_asset_repo.setEnabled(bool(text))
+        )
+        self.create_project_line_edit.textEdited.connect(
+            lambda text: self.added_task_subfolders_check.setEnabled(bool(text))
+        )
 
         self.added_task_subfolders_check.stateChanged.connect(self.on_add_task_checked)
 
@@ -175,6 +203,7 @@ class TraceProjectIndex(QtWidgets.QMainWindow):
         Enables or disables the software input field based on the 'Add Tasks Subfolder' checkbox.
         Disables editing if the checkbox is unchecked.
         """
+        self.include_software.setHidden(not self.added_task_subfolders_check.isChecked())
         self.include_software.setEnabled(self.added_task_subfolders_check.isChecked())
 
     def _tree_item(self, name, parent, removable=False):
@@ -252,6 +281,15 @@ class TraceProjectIndex(QtWidgets.QMainWindow):
             delete_action = menu.addAction("Delete")
             delete_action.triggered.connect(self.delete_tree_item)
 
+            mark_local_asset_repo = menu.addAction("Mark as Asset Repository")
+            mark_local_asset_repo.triggered.connect(self.override_local_asset_repo)
+            mark_local_asset_repo.setEnabled(False)
+            mark_local_asset_repo.setVisible(False)
+
+            if self.edit_asset_repo.isChecked():
+                mark_local_asset_repo.setEnabled(True)
+                mark_local_asset_repo.setVisible(True)
+
         else:
             add_action = menu.addAction("Add New Project")
             add_action.triggered.connect(self.add_tree_item)
@@ -304,6 +342,82 @@ class TraceProjectIndex(QtWidgets.QMainWindow):
             else:
                 index = self.tree_widget.indexOfTopLevelItem(item)
                 self.tree_widget.takeTopLevelItem(index)
+
+    def read_local_asset_lib_data(self) -> dict:
+        if not self.local_asset_lib:
+            logging.warning("Local Asset Library definition file not found in show data.")
+        try:
+            with open(self.local_asset_lib, "r") as f:
+                asset_lib_load = json.load(f)
+            return asset_lib_load
+        except json.JSONDecodeError:
+            QtWidgets.QMessageBox.critical(
+                self,
+                "Error",
+                f"The asset_lib_data file at {self.local_asset_lib} is corrupted "
+                "and could not be read."
+            )
+            return {}
+
+    def set_local_asset_repo(self):
+        """
+        Sets QListWidgetItem as a local (per project asset repository)
+        """
+        current_project = self.create_project_line_edit.text()
+        repo_path = self.read_local_asset_lib_data().get(current_project, "")
+        if not repo_path and current_project:
+            self.edit_asset_repo.setChecked(True)
+        else:
+            self.edit_asset_repo.setChecked(False)
+            self.asset_repo_location.setHidden(False)
+            self.asset_repo_location.setReadOnly(True)
+        self.asset_repo_location.setText(repo_path)
+
+    def override_local_asset_repo(self):
+        self.asset_repository = self.get_selection()
+        repo_path = self.create_local_asset_repo_path()
+        self.asset_repo_location.setText(repo_path)
+
+    def clear_local_asset_repo_path(self):
+        if self.edit_asset_repo.isChecked():
+            self.asset_repo_location.setHidden(False)
+            self.asset_repo_location.setText("")
+            self.asset_repo_location.setReadOnly(False)
+            self.asset_repository = None
+
+        else:
+            self.asset_repo_location.setHidden(True)
+            self.asset_repo_location.setReadOnly(True)
+            self.set_local_asset_repo()
+
+    def get_asset_repo_path_parts(self, item, parts=None):
+        """
+        Recursively collect the names of a QTreeWidgetItem and all its parent items.
+
+        This function walks up the tree hierarchy starting from the given item,
+        adding each item's text label (column 0) to a list. It is used to
+        construct an asset-repository path.
+        """
+        if parts is None:
+            parts = [item.text(0)]
+        parent = item.parent()
+        if parent:
+            parts.append(parent.text(0))
+            self.get_asset_repo_path_parts(parent, parts)
+        return parts
+
+    def create_local_asset_repo_path(self):
+        """
+        Builds the directory path for the local asset repository.
+        This function uses the list of parent items collected from the
+        QListWidgetItem marked as the local asset repository.
+        """
+        asset_repo_path_parts = self.get_asset_repo_path_parts(self.asset_repository)
+        if asset_repo_path_parts and self.show_root:
+            asset_repo_path = "/".join(asset_repo_path_parts[::-1])
+            asset_repo_path = self.show_root + '/' + asset_repo_path
+            return asset_repo_path
+        return None
 
     def validate_item_name(self, item, column):
         """
@@ -369,6 +483,16 @@ class TraceProjectIndex(QtWidgets.QMainWindow):
         with open(self.project_index_path, 'w') as output_file:
             json.dump(project_index, output_file, indent=4)
 
+    def update_local_asset_lib_data(self):
+        asset_lib_path = self.asset_repo_location.text()
+        asset_repo_read = self.read_local_asset_lib_data()
+        current_project = self.create_project_line_edit.text()
+        repo = asset_repo_read.get(current_project, None)
+        if repo != asset_repo_read:
+            asset_repo_read[current_project] = asset_lib_path
+            with open(self.local_asset_lib, "w") as f:
+                json.dump(asset_repo_read, f, indent=4)
+
     def _walk(self, parent, index, level):
         """
         Recursively traverses the tree and builds a nested dictionary
@@ -405,6 +529,15 @@ class TraceProjectIndex(QtWidgets.QMainWindow):
         if not input_name:
             QtWidgets.QMessageBox.critical(self, "Error", "Please enter a project name to create or update.")
             return
+        logging.info(f"Asset repo location __{self.asset_repo_location.text()}__")
+        logging.info(len(self.asset_repo_location.text()) == 0)
+        if len(self.asset_repo_location.text()) == 0:
+            reply = QtWidgets.QMessageBox.question(self, "Question", "No local asset repository specified.\n"
+                                                                     "Proceed and use only the Global Asset Repository?")
+
+            if reply != QtWidgets.QMessageBox.Yes:
+                return
+
         root_item = self.tree_widget.invisibleRootItem()
 
         root = None
@@ -445,6 +578,8 @@ class TraceProjectIndex(QtWidgets.QMainWindow):
         self._create_folders_recursive(root, show_folder_path)
 
         self.update_project_index()
+
+        self.update_local_asset_lib_data()
 
         self._reset_ui_state()
 
@@ -500,6 +635,9 @@ class TraceProjectIndex(QtWidgets.QMainWindow):
         """
         self.include_software.setText("")
         self.create_project_line_edit.setText("")
+        self.asset_repo_location.setText("")
+        self.asset_repository = None
+        self.edit_asset_repo.setChecked(False)
         self.added_task_subfolders_check.setChecked(False)
         self.undo_stack = []
         self._rename_cache = None
