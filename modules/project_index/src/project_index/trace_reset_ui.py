@@ -23,16 +23,17 @@ except ImportError:
 class TraceResetUI(QtWidgets.QMainWindow):
     def __init__(self, parent=None):
         super(TraceResetUI, self).__init__(parent=parent)
+        self.resize(1500, 900)
+        self.setWindowTitle('Trace Reset v0.1.6')
+
         style_folder = os.environ.get("STYLE_PROJECT_INDEX")
         framework = os.getenv("PR_TRACEPATH_FRAMEWORK")
         if not framework:
             raise EnvironmentError("PR_TRACEPATH_FRAMEWORK is not set")
+
         self.project_index_path = os.path.join(framework, "config/trace_project_index.json")
         with open(self.project_index_path, "r") as read_file:
             self.pr_index_read = json.load(read_file)
-
-        self.resize(1500, 900)
-        self.setWindowTitle('Trace Reset v0.1.6')
 
         self.pr_projects_path = os.environ.get("PR_PROJECTS_PATH")
         if not self.pr_projects_path:

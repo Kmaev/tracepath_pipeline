@@ -42,11 +42,16 @@ class TraceProjectIndex(QtWidgets.QMainWindow):
         # Get env vars
         style_folder = os.environ.get("STYLE_PROJECT_INDEX")
         framework = os.getenv("PR_TRACEPATH_FRAMEWORK")
+        if not framework:
+            raise EnvironmentError("PR_TRACEPATH_FRAMEWORK is not set")
+
         self.project_index_path = os.path.join(framework, "config/trace_project_index.json")
         self.usd_template_path = os.path.join(framework, "config/usd_scene_template.json")
         self.local_asset_lib = os.path.join(framework, "config/local_asset_lib_data.json")
 
-        self.show_root = os.getenv("PR_PROJECTS_PATH")
+        self.pr_projects_path = os.getenv("PR_PROJECTS_PATH")
+        if not self.pr_projects_path:
+            raise EnvironmentError("PR_PROJECTS_PATH is not set")
 
         self.central_widget = QtWidgets.QWidget()
         self.central_layout = QtWidgets.QVBoxLayout(self.central_widget)
@@ -135,10 +140,10 @@ class TraceProjectIndex(QtWidgets.QMainWindow):
         if self.parent():
             self.parent().setStyleSheet(self.parent().styleSheet())
 
-        # Functions executed on init
+        # FUNCTIONS EXECUTED ON INIT ---------------------------------
         self.populate_tree()
 
-        # Widget signal connections
+        # SIGNALS ---------------------------------
         self.search_line.textEdited.connect(self.run_search)
         self.search_line.textChanged.connect(self.reset_search_state)
 
@@ -167,7 +172,7 @@ class TraceProjectIndex(QtWidgets.QMainWindow):
 
         self.create_folder_structure_btn.clicked.connect(self.create_folder_structure)
 
-        # Shortcuts signal connections
+        # SHORTCUTS SIGNAL CONNECTIONS ---------------------------------
         undo_shortcut = QtGui.QShortcut(QtGui.QKeySequence("Ctrl+Z"), self)
         undo_shortcut.activated.connect(self.undo_action)
 
@@ -412,9 +417,9 @@ class TraceProjectIndex(QtWidgets.QMainWindow):
         QListWidgetItem marked as the local asset repository.
         """
         asset_repo_path_parts = self.get_asset_repo_path_parts(self.asset_repository)
-        if asset_repo_path_parts and self.show_root:
+        if asset_repo_path_parts and self.pr_projects_path:
             asset_repo_path = "/".join(asset_repo_path_parts[::-1])
-            asset_repo_path = self.show_root + '/' + asset_repo_path
+            asset_repo_path = self.pr_projects_path + '/' + asset_repo_path
             return asset_repo_path
         return None
 
@@ -520,7 +525,7 @@ class TraceProjectIndex(QtWidgets.QMainWindow):
         Validates environment variables and user input, creates folders on disk,
         and updates the project index.
         """
-        if not self.show_root:
+        if not self.pr_projects_path:
             QtWidgets.QMessageBox.critical(self, "Error", "Environment variable 'PR_PROJECTS_PATH' is not set.")
             return
 
@@ -566,9 +571,9 @@ class TraceProjectIndex(QtWidgets.QMainWindow):
         if reply != QtWidgets.QMessageBox.Yes:
             return
 
-        show_folder_path = os.path.join(self.show_root, root.text(0))
-        if not os.path.isdir(self.show_root):
-            os.makedirs(self.show_root)
+        show_folder_path = os.path.join(self.pr_projects_path, root.text(0))
+        if not os.path.isdir(self.pr_projects_path):
+            os.makedirs(self.pr_projects_path)
         if self.added_task_subfolders_check.isChecked():
             self.check_dcc_name()
         self.set_item_removable(root, False)  # lock the project itself
