@@ -1,5 +1,6 @@
 import os
 import re
+from pathlib import Path
 
 import hou
 
@@ -59,16 +60,16 @@ class OpenFileDialog(QtWidgets.QDialog):
 
             folder_path = os.path.join(self.user_data, hip_folder)
             hip_files = [i for i in sorted(os.listdir(folder_path)) if not i.startswith(".")]
-
             for hip_file in hip_files:
                 hip_file_path = os.path.join(folder_path, hip_file)
                 display_name = hip_file.split("/")[-1]
-                hip_file_item = QtWidgets.QTreeWidgetItem(hip_folder_item)
-                hip_file_item.setText(0, display_name)
+                if Path(hip_file_path).is_file():
+                    hip_file_item = QtWidgets.QTreeWidgetItem(hip_folder_item)
+                    hip_file_item.setText(0, display_name)
 
-                if re.search(r"\.hip\w*$", hip_file, re.IGNORECASE):
-                    hip_file_item.setData(0, QtCore.Qt.UserRole, hip_file_path)
-                    hip_file_item.setText(0, hip_file)
+                    if re.search(r"\.hip\w*$", hip_file, re.IGNORECASE):
+                        hip_file_item.setData(0, QtCore.Qt.UserRole, hip_file_path)
+                        hip_file_item.setText(0, hip_file)
 
     def on_open(self):
         item = self.tree_widget.selectedItems()[0]
