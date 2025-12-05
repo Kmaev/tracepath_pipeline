@@ -218,6 +218,16 @@ def version_up_shot_manifest(node: hou.Node) -> str | None:
 
     return str(new_output_path)
 
+def find_stage_source_layer(node: hou.node) -> str:
+    """
+    Retrieve the identifier of the USD layer on which the current edit was performed.
+
+    This is used inside the HDA to determine the source layer for building the
+    main shot manifest composition.
+
+    """
+    return node.sourceLayer().identifier
+
 
 # Publishing
 
@@ -412,3 +422,5 @@ def _require_env(keys):
     miss = [k for k in keys if not os.getenv(k)]
     if miss:
         raise RuntimeError("Missing environment variables: " + ", ".join(miss))
+
+
