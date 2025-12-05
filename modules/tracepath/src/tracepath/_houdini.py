@@ -193,7 +193,7 @@ def version_up_shot_manifest(node: hou.Node) -> str | None:
                 parent_folder = path.parent
                 file_name = path.name
 
-                match = re.search(r"(\d+)$", parent_folder.name)
+                match = re.search(r"v(\d+)", parent_folder.name)
 
                 if match:
                     version = match.group(1)
@@ -203,7 +203,8 @@ def version_up_shot_manifest(node: hou.Node) -> str | None:
                     new_version = str(version_up).zfill(len(version))
                     new_folder_name = parent_folder.name.replace(version, new_version)
                     new_folder = parent_folder.parent / new_folder_name
-                    new_file_name = file_name.replace(version, new_version)
+
+                    new_file_name = file_name.replace(f"v{version}", f"v{new_version}")
                     new_output_path = new_folder / new_file_name
 
     if not new_output_path:
@@ -216,6 +217,16 @@ def version_up_shot_manifest(node: hou.Node) -> str | None:
         new_output_path = context / new_file_path
 
     return str(new_output_path)
+
+def find_stage_source_layer(node: hou.node) -> str:
+    """
+    Retrieve the identifier of the USD layer on which the current edit was performed.
+
+    This is used inside the HDA to determine the source layer for building the
+    main shot manifest composition.
+
+    """
+    return node.sourceLayer().identifier
 
 
 # Publishing
@@ -411,3 +422,5 @@ def _require_env(keys):
     miss = [k for k in keys if not os.getenv(k)]
     if miss:
         raise RuntimeError("Missing environment variables: " + ", ".join(miss))
+
+

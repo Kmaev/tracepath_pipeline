@@ -618,7 +618,7 @@ class TraceProjectIndex(QtWidgets.QMainWindow):
             folder_path = os.path.join(current_path, folder_name)
 
             if item_type == "item" and _usd is not None:
-                stage = os.path.join(str(folder_path), "main/v001/main_v001.usdc")
+                stage = os.path.join(str(folder_path), f"main/v001/{child.text(0)}_v001.usda")
                 _usd.create_scene_from_json(self.usd_template_path, stage)
 
             if item_type == "task" and self.added_task_subfolders_check.isChecked():
