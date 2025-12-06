@@ -9,7 +9,15 @@ import hou
 # Generic functions for Load and Write USD HDAs in houdini
 def get_env() -> dict:
     """
-    Gets environment variables for path resolution.
+    Get environment variables used for a project repository and show path resolution.
+
+    Return:
+        dict: A dictionary containing:
+            - "pr_projects_path": The root path to all projects, read from
+              the PR_PROJECTS_PATH environment variable.
+            - "pr_show": The current show identifier, read from the PR_SHOW
+              environment variable.
+
     """
     env_data = {
         "pr_projects_path": os.getenv("PR_PROJECTS_PATH"),
@@ -21,6 +29,14 @@ def get_env() -> dict:
 def get_node_env_data(node: hou.Node) -> dict:
     """
     Retrieve environment variables from HDA parameters.
+
+    Args:
+        node (hou.Node): Houdini TracePath Load USD Stage or USD Write HDA
+
+    Return:
+        dict: A dictionary containing:
+        "pr_group", "pr_item", "pr_task" environment variables.
+
     """
     _require_env(["PR_GROUP", "PR_ITEM", "PR_TASK"])
     node_data = {
@@ -33,7 +49,20 @@ def get_node_env_data(node: hou.Node) -> dict:
 
 def get_path_structure_templ(template: str) -> str | list | None:
     """
-    Load a path template from the folder_structure.json file.
+    Retrieve a path structure template from the folder_structure.json file.
+
+    This function loads the JSON file located alongside this module and
+    returns the value associated with the specified template key. The value
+    may be a string or a list, depending on how the template is defined.
+
+    Args:
+        template (str): The name of the template key to retrieve.
+
+    Return:
+        str | list | None:
+            - The template value (string or list) if the key exists.
+            - None if the key is not found.
+
     """
     json_path = Path(__file__).parent / "folder_structure.json"
 
@@ -52,7 +81,15 @@ def get_path_structure_templ(template: str) -> str | list | None:
 def get_manifest_context(node: hou.Node, templ) -> str:
     """
     Resolve the full context path for the USD shot manifest using template and environment values.
-    This function is also used in houdini HDA
+    This function is used in houdini HDA
+
+    Args:
+        node (hou.Node): A Houdini node from a TracePath Load USD Stage or USD Write HDA.
+        templ (str): Template key used to look up a path structure definition.
+
+    Return:
+        str: The resolved path to the main shot manifest folder.
+
     """
     env_vars = get_env()
     node_vars = get_node_env_data(node)
@@ -64,10 +101,20 @@ def get_manifest_context(node: hou.Node, templ) -> str:
     return context
 
 
-def find_matching_files(base_path: str, version: int) -> str | None:
+def find_file_in_context(base_path: str, version: int) -> str | None:
     """
-    Find a version folder and a file inside a version folder that contains the version string in its name.
+    Find a version folder and a file inside a version folder.
     Shot manifest context is sources from the template, but the actual file is sources by listing folders.
+
+    Args:
+        base_path (str): A path to the folder with the versions
+        version (int): A version to search
+
+    Return:
+        str | None:
+            - The first matching file path if the specified version is found.
+            - None if no file matching the version exists within the given path.
+
     """
     node_version = str(version).zfill(3)
     base = Path(base_path)
@@ -83,7 +130,14 @@ def find_matching_files(base_path: str, version: int) -> str | None:
 
 def get_latest_version_number(context: str) -> int | None:
     """
-    Gets the highest version number from versioned subfolders in a given context.
+    Get the highest version number from versioned subfolders in a given context.
+
+    Args:
+        context (str): A path to the folder that contains version
+
+    Return:
+        int: The latest version number
+
     """
     context_path = Path(context)
     if not context_path.exists():
@@ -106,9 +160,15 @@ def get_latest_version_number(context: str) -> int | None:
 def set_latest_version(node: hou.Node, context: str):
     """
     Set the node's version parameter to the latest version found in the context folder (Run from HDA on node creation).
+
+    Args:
+        node (hou.Node): A Houdini node TracePath Load USD Stage or USD Write HDA.
+
+    Return:
+        None
+
     """
     version = get_latest_version_number(str(context))
-    print(f"VERSION: {version}")
 
     if not version:
         version = 1
@@ -118,11 +178,18 @@ def set_latest_version(node: hou.Node, context: str):
 def load_shot_manifest(node: hou.Node) -> str:
     """
     Load the path to the main shot manifest file based on the version selected in the HDA.
-    Used in HDA parameter
+    Used in HDA parameter as a callback
+
+     Args:
+        node (hou.Node): A Houdini node TracePath Load USD Stage or USD Write HDA.
+
+    Return:
+        str: Path to the main shot manifest usd file.
+
     """
     context = get_manifest_context(node, "usd_shot_manifest_output")
     node_version = node.parm("version").evalAsString()
-    file = find_matching_files(str(context), node_version)
+    file = find_file_in_context(str(context), node_version)
 
     if not file or not Path(file).exists():
         raise RuntimeError(f"No matching file found for version '{node_version}' in: {context}")
@@ -133,7 +200,15 @@ def load_shot_manifest(node: hou.Node) -> str:
 
 def get_usd_output_path(node: hou.Node, template) -> str:
     """
-    Solves the usd output file path using environment variables and the selected template.
+    Solve the usd output file path using environment variables and the selected template.
+
+    Args:
+        node (hou.Node): A Houdini node TracePath Load USD Stage or USD Write HDA.
+        template (str): The name of the template key to retrieve.
+
+    Return:
+        str: A path to the usd file to write to.
+
     """
     env_vars = get_env()
     node_vars = get_node_env_data(node)
@@ -153,7 +228,16 @@ def get_usd_output_path(node: hou.Node, template) -> str:
 
 def get_first_frame_cache(node: hou.Node) -> float:
     """
-    Gets first frame cache for a given node.
+    Get the first frame cache for a given node.
+
+    This function is used to evaluate if just a single file cache or if it is a sequence should be written to disk.
+
+    Args:
+        node (hou.Node): A Houdini node TracePath Load USD Stage or USD Write HDA.
+
+    Return:
+        float: A first frame of the cache
+
     """
     first_frame = node.parm("f1").eval()
     cache_parm = node.parm("lopoutput").evalAtFrame(first_frame)
@@ -163,6 +247,13 @@ def get_first_frame_cache(node: hou.Node) -> float:
 def apply_autoversion(node: hou.Node):
     """
     This function called from HDA to version up the file
+
+    Args:
+        node (hou.Node): A Houdini node TracePath Load USD Stage or USD Write HDA.
+
+    Return:
+        None
+
     """
     version = 1
     if node.parm("autoversion").eval() == 1:
@@ -177,17 +268,23 @@ def apply_autoversion(node: hou.Node):
     node.parm("version").set(version)
 
 
-def version_up_shot_manifest(node: hou.Node) -> str | None:
+def version_up_shot_manifest(node: hou.Node) -> str:
     """
-    Versions up main shot manifest path. Creates an output path, using re extracts the version number.
+    Create a versioned up output path, using re extract the version number and increase the version.
     This function called from Write USD HDA
+
+    node (hou.Node): A Houdini node TracePath Load USD Stage or USD Write HDA.
+
+    Return:
+        str: Versioned up a main shot manifest output path.
+
     """
     new_output_path = ""
     context = Path(get_manifest_context(node, "usd_shot_manifest_output"))
     if context.exists():
         latest_version = get_latest_version_number(str(context))
         if latest_version:
-            output_path = find_matching_files(str(context), latest_version)
+            output_path = find_file_in_context(str(context), latest_version)
             if output_path:
                 path = Path(output_path)
                 parent_folder = path.parent
@@ -218,12 +315,19 @@ def version_up_shot_manifest(node: hou.Node) -> str | None:
 
     return str(new_output_path)
 
+
 def find_stage_source_layer(node: hou.node) -> str:
     """
     Retrieve the identifier of the USD layer on which the current edit was performed.
 
     This is used inside the HDA to determine the source layer for building the
     main shot manifest composition.
+
+    Args:
+        node (hou.Node): A Houdini node in LOP context
+
+    Return:
+        USD stage identifier from which the current edit has started
 
     """
     return node.sourceLayer().identifier
@@ -234,6 +338,10 @@ def find_stage_source_layer(node: hou.node) -> str:
 def get_data_folder() -> Path:
     """
     Helper function to get the data folder.
+
+    Return:
+        Path: A path to the folder that contains project data
+
     """
     env_vars = get_env()
     return Path(env_vars["pr_projects_path"]) / env_vars["pr_show"] / "show_data"
@@ -243,6 +351,12 @@ def get_publish_key(node: hou.Node) -> str:
     """
     Helper function to get the publish key, publish key consist of group and name what in classic vfx pipeline would be
     sequence and shot.
+
+    Args:
+        node (hou.Node): A Houdini node TracePath USD Write HDA.
+    Return:
+        str: A key combined from pr_group and pr_item sued for publishing.
+
     """
     node_data = get_node_env_data(node)
     return f"{node_data['pr_group']}_{node_data['pr_item']}"
@@ -251,6 +365,12 @@ def get_publish_key(node: hou.Node) -> str:
 def write_publish_comment(node: hou.Node) -> None:
     """
     Writes a publish comment to the published data file.
+
+    Args:
+        node (hou.Node): A Houdini node TracePath USD Write HDA.
+    Return:
+        None
+
     """
     comment = node.parm("comment").eval()
     file = node.parm("shot_manifest_output").eval()
@@ -270,18 +390,31 @@ def write_publish_comment(node: hou.Node) -> None:
 def get_published_data_path(data_folder: Path) -> Path:
     """
     Helper function to get the path to the json file with all the published data. (Published data is show-based)
+
+    Args:
+        data_folder (Path): Path to the folder where the JSON published a data file stored
+    Return:
+        Path: published data JSON file path
+
     """
     return data_folder / "published_data.json"
 
 
-def get_published_data(data_folder: Path) -> dict:
+def get_published_data(data_file: Path) -> dict:
     """
     Loads the published assets data from a JSON file.
 
     If the JSON file does not exist, it creates an empty one and returns an empty dictionary.
+
+    Args:
+        data_file (Path): JSON file path.
+
+    Return:
+        dict: loaded dictionary from the path.
+
     """
-    data_folder.mkdir(parents=True, exist_ok=True)
-    published_data_path = get_published_data_path(data_folder)
+    data_file.mkdir(parents=True, exist_ok=True)
+    published_data_path = get_published_data_path(data_file)
 
     if not published_data_path.exists():
         published_data_path.write_text('{}')
@@ -292,6 +425,14 @@ def get_published_data(data_folder: Path) -> dict:
 def write_published_data(data_folder: Path, published_data: dict) -> None:
     """
     Writes the published assets data to a JSON file.
+
+    Args:
+        data_folder (Path): Path to the folder that contains the published data JSON file.
+        published_data (dict): A dictionary containing the data to write.
+
+    Return:
+        None
+
     """
     published_data_path = get_published_data_path(data_folder)
     published_data_path.write_text(json.dumps(published_data, indent=4))
@@ -300,6 +441,13 @@ def write_published_data(data_folder: Path, published_data: dict) -> None:
 def read_publish_comment(node: hou.Node) -> str | None:
     """
     Reads the published comment from the published data file. Called from HDA parameter
+
+    Args:
+        node (hou.Node): A Houdini node TracePath HDA.
+
+    Return:
+        str: A comment from the published main shot manifest usd file
+
     """
     file_path = node.parm("shot_manifest_read").evalAsString()
     data_folder = get_data_folder()
@@ -327,6 +475,10 @@ def is_fresh_scene() -> bool:
     """
     Check if the current Houdini session is a new scene
     (not yet saved to disk) or an existing saved scene.
+
+    Return:
+        bool: True if the houdini session is a new scene False if it is a previously saved hip file.
+
     """
     path = hou.hipFile.name()
     path = os.path.exists(path)
@@ -337,7 +489,12 @@ def is_fresh_scene() -> bool:
 
 def hip_ext_from_session() -> str:
     """
-    Return the .hip* extension for the current Houdini session.
+    Check the license category of the current houdini session.
+    Map the license category to the corresponding expedition of the hip file.
+
+    Return:
+        str: the .hip* extension for the current Houdini session.
+
     """
     if not hasattr(hou, "licenseCategory"):
         raise RuntimeError(
@@ -360,7 +517,22 @@ def hip_ext_from_session() -> str:
 
 def make_scene_path(dcc, scene_name) -> str | None:
     """
-    Returns the file path for a scene based on the 'scene_file' template and the given DCC.
+    Create a scene file path based on the DCC application and the scene file name.
+
+    Args:
+        dcc (str):
+            Name of the current DCC application. Used to determine the appropriate
+            folder where the scene file should be stored.
+        scene_name (str):
+            The base name of the scene file.
+
+    Return:
+        str | None:
+            - The resolved file path for a scene based on the 'scene_file' template
+              and the given DCC.
+            - None if the scene path could not be created (for example, if no scene
+              name is provided).
+
     """
     ext = hip_ext_from_session()
     if scene_name != "":
@@ -394,6 +566,7 @@ def make_scene_path(dcc, scene_name) -> str | None:
 def save_scene(scene_path):
     """
     Saves the scene to the given path.
+
     """
     if not os.path.isdir(os.path.dirname(scene_path)):
         os.makedirs(os.path.dirname(scene_path))
@@ -403,9 +576,13 @@ def save_scene(scene_path):
 # ==================================================================
 # Open HIP file
 
-def get_task_context():
+def get_task_context() -> str:
     """
-    Returns the task context path based on environment variables.
+    Solve a task context path based on an environment variables.
+
+    Return:
+        str: A context path.
+
     """
     _require_env(["PR_PROJECTS_PATH", "PR_SHOW", "PR_ITEM", "PR_GROUP", "PR_TASK"])
     context = os.path.join(os.environ.get("PR_PROJECTS_PATH"), os.environ.get("PR_SHOW"),
@@ -418,9 +595,8 @@ def get_task_context():
 def _require_env(keys):
     """
     Helper function to ensure that all required environment variables are set.
+
     """
     miss = [k for k in keys if not os.getenv(k)]
     if miss:
         raise RuntimeError("Missing environment variables: " + ", ".join(miss))
-
-
