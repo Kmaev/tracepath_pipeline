@@ -1,6 +1,5 @@
 import os
 import re
-from importlib import reload
 
 import hou
 
@@ -9,9 +8,7 @@ try:
 except ImportError:
     from PySide6 import QtWidgets, QtCore
 
-from tracepath import _houdini
-
-reload(_houdini)
+from tracepath import _houdini, core_utils
 
 
 class SaveFileDialog(QtWidgets.QDialog):
@@ -98,8 +95,8 @@ class SaveFileDialog(QtWidgets.QDialog):
 
     def get_scene_path_preview(self, text):
         name = re.sub(r'[^a-zA-Z0-9]', '_', text)
-
-        self.scene_path = _houdini.make_scene_path("houdini", scene_name=name)
+        file_ext = _houdini.hip_ext_from_session()
+        self.scene_path = core_utils.make_scene_path("houdini", ext=file_ext, scene_name=name)
         self.output_path.setText(self.scene_path or "")
 
     def validate_scene_name(self):

@@ -9,7 +9,7 @@ try:
 except ImportError:
     from PySide6 import QtWidgets, QtCore
 
-from tracepath import _houdini
+from tracepath import core_utils
 
 
 class OpenFileDialog(QtWidgets.QDialog):
@@ -23,7 +23,7 @@ class OpenFileDialog(QtWidgets.QDialog):
         self.setLayout(self.central_layout)
 
         self.root_label = QtWidgets.QLabel("Context:")
-        self.user_data = os.path.join(_houdini.get_task_context(), f"{dcc}/scenes")
+        self.user_data = os.path.join(core_utils.get_task_context(), f"{dcc}/scenes")
         self.central_layout.addWidget(self.root_label)
 
         self.tree_widget = QtWidgets.QTreeWidget(self)
