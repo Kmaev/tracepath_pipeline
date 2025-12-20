@@ -8,9 +8,10 @@ import sys
 from functools import partial, reduce
 from pathlib import Path
 
-from project_index import _utils
+from project_index import _usd
 
-importlib.reload(_utils)
+
+importlib.reload(_usd)
 
 logging.basicConfig(level=logging.INFO, format="%(levelname)s: %(message)s")
 
@@ -363,7 +364,7 @@ class TraceResetUI(QtWidgets.QMainWindow):
             logging.error(f"Published USD file '{usd_file_path}' was not found. Skipping loading process.")
             return
 
-        preview_layers = _utils.get_usd_file_dependencies_preview(usd_file_path)
+        preview_layers = _usd.get_usd_file_dependencies_preview(usd_file_path)
         for layer_name in preview_layers:
             self.create_list_item(layer_name, self.usd_data)
 
