@@ -38,7 +38,7 @@ def create_scene_from_json(template_path: str, stage_output_path: str):
     create_prim(stage, "", root_prim)
     stage.GetRootLayer().Save()
 
-
+# TraceReset Helper Function to preview USD stage layer composition
 def fetch_usd_layers(usd_file: str) -> list:
     """
     Fetch all USD dependency layers referenced by the given USD file.
@@ -58,19 +58,17 @@ def group_collections(usd_layers: list) -> list:
     single-frame caches — remain as individual items.
     """
     final_list = []
-
     buckets = defaultdict(list)
-    singles = []
 
     for layer in usd_layers:
         name = getattr(layer, "identifier", str(layer))
-        if re.search(r"\.\d+\.(usda|usdc)$", name, re.IGNORECASE):
+        if re.search(r"\.\d+\.(usda|usdc|usd)$", name, re.IGNORECASE):
             # base = everything before digits and extension.
             # First a file filtered based on digits in a path and then grouped based on the name"
-            base = re.sub(r"\.\d+\.(usda|usdc)$", "", name, flags=re.IGNORECASE)
+            base = re.sub(r"\.\d+\.(usda|usdc|usd)$", "", name, flags=re.IGNORECASE)
             buckets[base].append(layer)
         else:
-            singles.append(layer)
+            final_list.append(layer)
     # Groups sorting, final list creation:
     for base, items in buckets.items():
         # Buckets with 2 or more files (true multi-frame sequences):
@@ -81,8 +79,6 @@ def group_collections(usd_layers: list) -> list:
         else:
             final_list.extend(items)
 
-        # Add regular single USD files
-    final_list.extend(singles)
     return final_list
 
 
@@ -100,6 +96,8 @@ def create_preview_list(grouped_usd_files: list) -> list:
         else:
             usd_path = getattr(i, "identifier", str(i))
             display_items_list.append(usd_path)
+            
+    display_items_list = sorted(display_items_list, key=lambda x: x.split("/")[-1])
 
     return display_items_list
 
