@@ -363,7 +363,9 @@ class TraceResetUI(QtWidgets.QMainWindow):
         into the layer composition tree widget.
 
         """
-        comp = _usd.walk_layer_stack(usd_file_path)
+        root_usd_layer = _usd.find_usd_layer(usd_file_path)
+        print(f"Root usd layer: {root_usd_layer}")
+        comp = _usd.walk_layer_stack(root_usd_layer)
         root = self.usd_data.invisibleRootItem()
         visited = set()
         self.populate_tree_recursive(comp, usd_file_path, root, visited)

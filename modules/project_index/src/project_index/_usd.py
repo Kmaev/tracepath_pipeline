@@ -1,4 +1,5 @@
 import json
+import os.path
 from collections import defaultdict
 from typing import Any
 
@@ -40,18 +41,24 @@ def create_scene_from_json(template_path: str, stage_output_path: str):
 
 
 # TraceReset Helper Function to preview USD stage layer composition
-def walk_layer_stack(layer, visited=None, tree=None):
+def find_usd_layer(usd_file_path) -> Sdf.Layer:
+    if not os.path.isfile(usd_file_path):
+        raise FileNotFoundError(f"USD file not found: {usd_file_path}")
+
+    layer = Sdf.Layer.FindOrOpen(usd_file_path)
+    if layer is None:
+        raise RuntimeError(f"Failed to open USD layer: {usd_file_path}")
+    return layer
+
+
+def walk_layer_stack(layer: Sdf.Layer, visited=None, tree=None):
     if visited is None:
         visited = set()
 
     if tree is None:
         tree = defaultdict(list)
-
-    if isinstance(layer, str):
-        layer_id = layer
-        layer = Sdf.Layer.FindOrOpen(layer_id)
-    else:
-        layer_id = layer.identifier
+    print(f"Resolver layer: {layer}")
+    layer_id = layer.identifier
 
     if layer_id in visited:
         return tree
