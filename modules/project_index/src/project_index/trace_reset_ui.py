@@ -8,9 +8,9 @@ import sys
 from functools import partial, reduce
 from pathlib import Path
 
-from project_index import _utils
+from project_index import _usd
 
-importlib.reload(_utils)
+importlib.reload(_usd)
 
 logging.basicConfig(level=logging.INFO, format="%(levelname)s: %(message)s")
 
@@ -103,32 +103,24 @@ class TraceResetUI(QtWidgets.QMainWindow):
         self.tasks = QtWidgets.QListWidget(self)
         self.tasks_layout.addWidget(self.tasks)
 
-        # Item Versions Data  layout
-        self.versions_data = QtWidgets.QVBoxLayout()
-        self.display_layout.addLayout(self.versions_data)
-
-        # Main USD List
-        self.main_usd_layout = QtWidgets.QVBoxLayout()
-        self.versions_data.addLayout(self.main_usd_layout)
+        # Main USD list
+        self.usd_list_layout = QtWidgets.QVBoxLayout()
+        self.project_elements_layout.addLayout(self.usd_list_layout)
 
         self.main_usd_label = QtWidgets.QLabel("Main Versions")
-        self.main_usd_layout.addWidget(self.main_usd_label)
-
+        self.usd_list_layout.addWidget(self.main_usd_label)
         self.main_usd = QtWidgets.QListWidget(self)
-        self.main_usd_layout.addWidget(self.main_usd)
+        self.usd_list_layout.addWidget(self.main_usd)
 
-        # Main USD data
-        self.usd_data_label = QtWidgets.QLabel("Detail View")
-        self.main_usd_layout.addWidget(self.usd_data_label)
-
-        # Main USD data info message:
-        self.data_info = QtWidgets.QLabel("Warning: Data in the Detail View is for informational purposes only."
+        # USD Layer Composition data info message:
+        self.data_info = QtWidgets.QLabel("Warning: Data in USD Layer Composition is for informational purposes only."
                                           " You cannot edit the main USD file's component layers.")
         self.data_info.setObjectName("data_info")
-        self.main_usd_layout.addWidget(self.data_info)
+        self.display_layout.addWidget(self.data_info)
 
-        self.usd_data = QtWidgets.QListWidget()
-        self.main_usd_layout.addWidget(self.usd_data)
+        self.usd_data = QtWidgets.QTreeWidget()
+        self.usd_data.setHeaderLabel("USD Layer Composition")
+        self.display_layout.addWidget(self.usd_data)
 
         # DELETE WIDGETS ---------------------------------
         self.delete_widget = QtWidgets.QWidget()
@@ -349,7 +341,8 @@ class TraceResetUI(QtWidgets.QMainWindow):
 
     def on_main_usd_version_changed(self):
         """
-        Populates the detail list widget with the composition layers of the selected main USD file.
+        Populates the detail tree widget with the composition layers of the selected main USD file.
+
         """
         self.usd_data.clear()
         selected = self.main_usd.selectedItems()
@@ -362,10 +355,50 @@ class TraceResetUI(QtWidgets.QMainWindow):
         if not os.path.isfile(usd_file_path):
             logging.error(f"Published USD file '{usd_file_path}' was not found. Skipping loading process.")
             return
+        self.display_usd_layer_composition(usd_file_path)
 
-        preview_layers = _utils.get_usd_file_dependencies_preview(usd_file_path)
-        for layer_name in preview_layers:
-            self.create_list_item(layer_name, self.usd_data)
+    def display_usd_layer_composition(self, usd_file_path: str):
+        """
+        Query the USD layer composition graph, and renders it recursively
+        into the layer composition tree widget.
+
+        """
+        root_usd_layer = _usd.find_usd_layer(usd_file_path)
+        comp = _usd.walk_layer_stack(root_usd_layer)
+        root = self.usd_data.invisibleRootItem()
+        visited = set()
+        self.populate_tree_recursive(comp, usd_file_path, root, visited)
+        self.usd_data.expandAll()
+
+    def populate_tree_recursive(self, tree_dict: dict[str, list[str]], node_id: str,
+                                parent_item: QtWidgets.QTreeWidgetItem, visited: set[str]):
+        """
+        Render a node and its children recursively into a tree widget.
+
+        Args:
+            tree_dict: dictionary (parent -> children)
+            node_id: current usd layer identifier
+            parent_item: parent UI item
+            visited: visited nodes
+
+        """
+        if node_id in visited:
+            return
+        visited.add(node_id)
+
+        item = self._tree_item(node_id, parent_item)
+
+        for child in tree_dict.get(node_id, []):
+            self.populate_tree_recursive(tree_dict, child, item, visited)
+
+    def _tree_item(self, name: str, parent: QtWidgets.QTreeWidgetItem) -> QtWidgets.QTreeWidgetItem:
+        """
+        Defines a QTreeWidgetItem and adds it to the parent.
+
+        """
+        item = QtWidgets.QTreeWidgetItem(parent)
+        item.setText(0, name)
+        return item
 
     # PROJECT FOLDERS AND DATA MODIFICATION ---------------------------------
     def open_context_menu(self, widget: QtWidgets.QListWidget, position: QtCore.QPoint, functions: dict):

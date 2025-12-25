@@ -1,6 +1,9 @@
 import json
+import os
+from collections import defaultdict
 from typing import Any
-from pxr import Usd, UsdGeom
+
+from pxr import Usd, UsdGeom, Sdf, Ar
 
 
 # USD Scene Initialization From Template
@@ -35,3 +38,74 @@ def create_scene_from_json(template_path: str, stage_output_path: str):
     stage = Usd.Stage.CreateNew(stage_output_path)
     create_prim(stage, "", root_prim)
     stage.GetRootLayer().Save()
+
+
+# TraceReset Helper Function to preview USD stage layer composition
+def find_usd_layer(usd_file_path: str) -> Sdf.Layer:
+    """
+    Open and return a USD layer from the given file path.
+
+    """
+    if not os.path.isfile(usd_file_path):
+        raise FileNotFoundError(f"USD file not found: {usd_file_path}")
+
+    layer = Sdf.Layer.FindOrOpen(usd_file_path)
+    if layer is None:
+        raise RuntimeError(f"Failed to open USD layer: {usd_file_path}")
+    return layer
+
+
+def walk_layer_stack(layer: Sdf.Layer, visited=None, composition_graph=None) -> defaultdict[str: list[str]]:
+    """
+    Traverse the sublayer stack of a USD layer and build an adjacency list of references.
+
+    This function walks the sublayer paths of the given USD layer, resolving and
+    opening each sublayer and recording parent-child relationships between layer
+    identifiers.
+
+    Args:
+        layer (Sdf.Layer):
+            Root usd layer
+        visited (set[str], optional):
+            Set of layer identifiers that have already been visited (mutable)
+        composition_graph (defaultdict[str, list[str]], optional):
+            Adjacency list mapping parent layer identifiers to their direct sublayer identifiers
+
+    Return:
+        defaultdict[str: list[str]]: Composition graph representing parent → child layer relationships.
+
+    """
+    if visited is None:
+        visited = set()
+
+    if composition_graph is None:
+        composition_graph = defaultdict(list)
+    layer_id = layer.identifier
+
+    if layer_id in visited:
+        return composition_graph
+
+    visited.add(layer_id)
+
+    resolver = Ar.GetResolver()
+    ctx = resolver.CreateDefaultContextForAsset(layer.resolvedPath)
+
+    with Ar.ResolverContextBinder(ctx):
+        for sublayer_path in layer.subLayerPaths:
+            identifier = resolver.CreateIdentifier(
+                sublayer_path,
+                layer.resolvedPath
+            )
+            resolved = resolver.Resolve(identifier)
+
+            if not resolved:
+                continue
+
+            sublayer = Sdf.Layer.FindOrOpen(resolved)
+            if not sublayer:
+                continue
+
+            composition_graph[layer_id].append(sublayer.identifier)
+
+            walk_layer_stack(sublayer, visited, composition_graph)
+    return composition_graph
