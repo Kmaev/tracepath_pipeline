@@ -231,7 +231,7 @@ Handles time-sampled data and provide built-in stitching of per-frame USD files,
 Tool to edit and manage assets, sequences, shots, tasks, and published USD files with a staging and deletion system. 
  Includes detailed dependency views for USD files and quick inspection in USDView.
  
- <img width="1469" height="916" alt="image" src="https://github.com/user-attachments/assets/3336c6d9-c2af-4b81-a554-13f22291e91b" />
+ <img width="2924" height="1814" alt="image" src="https://github.com/user-attachments/assets/a7013dc4-7e6d-457c-8e31-e9d75e64d216" />
 
 ## Important Note!
 
