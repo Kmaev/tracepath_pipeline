@@ -364,7 +364,6 @@ class TraceResetUI(QtWidgets.QMainWindow):
 
         """
         root_usd_layer = _usd.find_usd_layer(usd_file_path)
-        print(f"Root usd layer: {root_usd_layer}")
         comp = _usd.walk_layer_stack(root_usd_layer)
         root = self.usd_data.invisibleRootItem()
         visited = set()
@@ -383,10 +382,11 @@ class TraceResetUI(QtWidgets.QMainWindow):
             visited: visited nodes
 
         """
-        item = self._tree_item(node_id, parent_item)
         if node_id in visited:
             return
         visited.add(node_id)
+
+        item = self._tree_item(node_id, parent_item)
 
         for child in tree_dict.get(node_id, []):
             self.populate_tree_recursive(tree_dict, child, item, visited)

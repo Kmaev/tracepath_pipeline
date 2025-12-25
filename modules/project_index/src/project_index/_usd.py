@@ -1,5 +1,5 @@
 import json
-import os.path
+import os
 from collections import defaultdict
 from typing import Any
 
@@ -41,7 +41,11 @@ def create_scene_from_json(template_path: str, stage_output_path: str):
 
 
 # TraceReset Helper Function to preview USD stage layer composition
-def find_usd_layer(usd_file_path) -> Sdf.Layer:
+def find_usd_layer(usd_file_path: str) -> Sdf.Layer:
+    """
+    Open and return a USD layer from the given file path.
+
+    """
     if not os.path.isfile(usd_file_path):
         raise FileNotFoundError(f"USD file not found: {usd_file_path}")
 
@@ -51,17 +55,35 @@ def find_usd_layer(usd_file_path) -> Sdf.Layer:
     return layer
 
 
-def walk_layer_stack(layer: Sdf.Layer, visited=None, tree=None):
+def walk_layer_stack(layer: Sdf.Layer, visited=None, composition_graph=None) -> defaultdict[str: list[str]]:
+    """
+    Traverse the sublayer stack of a USD layer and build an adjacency list of references.
+
+    This function walks the sublayer paths of the given USD layer, resolving and
+    opening each sublayer and recording parent-child relationships between layer
+    identifiers.
+
+    Args:
+        layer (Sdf.Layer):
+            Root usd layer
+        visited (set[str], optional):
+            Set of layer identifiers that have already been visited (mutable)
+        composition_graph (defaultdict[str, list[str]], optional):
+            Adjacency list mapping parent layer identifiers to their direct sublayer identifiers
+
+    Return:
+        defaultdict[str: list[str]]: Composition graph representing parent → child layer relationships.
+
+    """
     if visited is None:
         visited = set()
 
-    if tree is None:
-        tree = defaultdict(list)
-    print(f"Resolver layer: {layer}")
+    if composition_graph is None:
+        composition_graph = defaultdict(list)
     layer_id = layer.identifier
 
     if layer_id in visited:
-        return tree
+        return composition_graph
 
     visited.add(layer_id)
 
@@ -83,7 +105,7 @@ def walk_layer_stack(layer: Sdf.Layer, visited=None, tree=None):
             if not sublayer:
                 continue
 
-            tree[layer_id].append(sublayer.identifier)
+            composition_graph[layer_id].append(sublayer.identifier)
 
-            walk_layer_stack(sublayer, visited, tree)
-    return tree
+            walk_layer_stack(sublayer, visited, composition_graph)
+    return composition_graph
