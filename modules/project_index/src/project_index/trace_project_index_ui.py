@@ -355,14 +355,13 @@ class TraceProjectIndex(QtWidgets.QMainWindow):
             with open(self.local_asset_lib, "r") as f:
                 asset_lib_load = json.load(f)
             return asset_lib_load
-        except json.JSONDecodeError as exc:
+        except json.JSONDecodeError:
             QtWidgets.QMessageBox.critical(
                 self,
                 "Error",
-                f"The asset_lib_data file at {self.local_asset_lib} is corrupted\n"
-                f"{exc}"
+                f"The asset_lib_data file at {self.local_asset_lib} is corrupted"
             )
-            raise
+            return {}
 
     def set_local_asset_repo(self):
         """
