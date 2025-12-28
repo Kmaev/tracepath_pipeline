@@ -348,20 +348,21 @@ class TraceProjectIndex(QtWidgets.QMainWindow):
                 self.tree_widget.takeTopLevelItem(index)
 
     def read_local_asset_lib_data(self) -> dict:
-        if not self.local_asset_lib:
-            logging.warning("Local Asset Library definition file not found in show data.")
+        if not os.path.isfile(self.local_asset_lib):
+            logging.warning("Local Asset Library definition file not found in config.")
+            return {}
         try:
             with open(self.local_asset_lib, "r") as f:
                 asset_lib_load = json.load(f)
             return asset_lib_load
-        except json.JSONDecodeError:
+        except json.JSONDecodeError as exc:
             QtWidgets.QMessageBox.critical(
                 self,
                 "Error",
-                f"The asset_lib_data file at {self.local_asset_lib} is corrupted "
-                "and could not be read."
+                f"The asset_lib_data file at {self.local_asset_lib} is corrupted\n"
+                f"{exc}"
             )
-            return {}
+            raise
 
     def set_local_asset_repo(self):
         """
